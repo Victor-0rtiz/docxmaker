@@ -4,7 +4,15 @@
   "description": "A lightweight library to generate DOCX documents from JSON definitions.",
   "author": "oss-dev",
   "license": "MIT",
-  "keywords": ["docx", "docx generator", "typescript"],
+  "keywords": [
+    "docx",
+    "docx generator",
+    "typescript"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Victor-0rtiz/docxmaker.git"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
