@@ -1,84 +1,57 @@
-
 import JSZip from 'jszip';
-import { create } from 'xmlbuilder2';
 import * as fs from 'fs';
+import { RelationshipsManager } from './generators/RelationshipsGenerator.js';
+import { ImageManager } from './generators/ImageManager.js';
 import { DocxDefinition } from './types/types.js';
-import { createText } from './elements/text.js';
-import { createParagraph } from './elements/paragrahp.js';
-import { createTable } from './elements/table.js';
+import { generateDocumentXml } from './generators/DocumentXmlGenerator.js';
+import { generateContentTypesXml } from './generators/ContentTypesGenerator.js';
+import { DocxGenerationError } from './DocxGenerationError.js';
 
 /**
- * Custom error class for DOCX generation failures.
- * @class
- * @extends Error
- * 
- * @example
- * try {
- *   // DOCX generation code
- * } catch (error) {
- *   if (error instanceof DocxGenerationError) {
- *     console.error('DOCX Generation Failed:', error.message);
- *   }
- * }
- */
-export class DocxGenerationError extends Error {
-    /**
-     * Creates a new DocxGenerationError
-     * @param {string} message - Error message
-     * @param {unknown} [originalError] - Original error that caused this exception
-     */
-    constructor(message: string, public originalError?: unknown) {
-        super(message);
-        this.name = 'DocxGenerationError';
-
-        // Maintain proper stack trace
-        if (Error.captureStackTrace) {
-            Error.captureStackTrace(this, DocxGenerationError);
-        }
-    }
-}
-
-/**
- * Generates DOCX documents from JSON definitions.
+ * Generates DOCX documents from structured definitions.
  * 
  * @example
  * // Basic usage
- * const definition = {
+ * import fs from 'fs';
+ * 
+ * const docDefinition: DocxDefinition = {
  *   content: [
- *     "Hello World",
+ *     "Hello World!",
  *     {
- *       type: 'paragraph',
+ *       type: "paragraph",
  *       content: [
- *         "This is a paragraph with a ",
- *         { type: 'link', text: 'link', url: 'https://example.com' }
+ *         "Visit ",
+ *         { type: "link", text: "Google", url: "https://google.com" }
  *       ]
+ *     },
+ *     {
+ *       type: "table",
+ *       rows: [
+ *         { cells: [{ content: ["Cell 1"] }, { content: ["Cell 2"] }] }
+ *       ]
+ *     },
+ *     {
+ *       type: 'image',
+ *       image: fs.readFileSync('logo.png')
  *     }
  *   ]
  * };
  * 
- * const generator = new DocxGenerator(definition);
+ * const generator = new DocxGenerator(docDefinition);
  * 
  * // Save to file
- * await generator.save('document.docx');
+ * await generator.save('output.docx');
  * 
  * // Get as Buffer
  * const buffer = await generator.generateDocxBuffer();
  * 
  * @example
  * // Static method usage
- * const buffer = await DocxGenerator.toBuffer({
- *   content: [
- *     "Document generated with static method",
- *     { type: 'table', rows: [{ cells: [{ content: ['Table cell'] }] }]
- *   ]
- * });
+ * const buffer = await DocxGenerator.toBuffer(docDefinition);
  */
 export class DocxGenerator {
-    /** Stores hyperlink relationships for the document */
-    private relationships: Array<{ id: string; type: string; target: string }> = [];
-
-    /** Counter for generating relationship IDs */
-    private nextRelId = 1;
+    private relManager: RelationshipsManager;
+    private imageManager: ImageManager;
 
     /**
      * Creates a DOCX generator instance
@@ -94,158 +67,44 @@ export class DocxGenerator {
         if (!definition || !Array.isArray(definition.content)) {
             throw new DocxGenerationError('Invalid document definition. "content" must be an array.');
         }
+        
+        this.relManager = new RelationshipsManager();
+        this.imageManager = new ImageManager();
     }
 
-
     /**
-   * Generates the main document.xml content
-   * @private
-   * @returns {string} XML string for word/document.xml
-   */
-    private generateDocumentXml(): string {
-        // Reset relationships for each document generation
-        this.relationships = [];
-        this.nextRelId = 1;
-
-        const root = create({ version: '1.0', encoding: 'UTF-8' })
-            .ele('w:document', {
-                'xmlns:w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
-                'xmlns:r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
-            })
-            .ele('w:body');
-
-        for (const item of this.definition.content) {
-            if (typeof item === 'string') {
-                const p = root.ele('w:p');
-                createText(p, item);
-            } else if (item.type === 'text') {
-                const p = root.ele('w:p');
-                if (item.style) {
-                    const pPr = p.ele('w:pPr');
-                    if (item.style.align) {
-                        const wordAlign = item.style.align === 'justify' ? 'both' : item.style.align;
-                        pPr.ele('w:jc', { 'w:val': wordAlign });
-                    }
-                    if (item.style.lineSpacing) {
-                        const spacingValue = Math.round(item.style.lineSpacing * 240);
-                        pPr.ele('w:spacing', { 'w:line': spacingValue, 'w:lineRule': 'auto' });
-                    }
-                }
-                createText(p, item);
-            } else if (item.type === 'paragraph') {
-                const getRelId = (url: string) => {
-                    const relId = `rId${this.nextRelId++}`;
-                    this.relationships.push({
-                        id: relId,
-                        type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink',
-                        target: url,
-                    });
-                    return relId;
-                };
-                createParagraph(root, item, getRelId);
-            } else if (item.type === 'table') {
-                const getRelId = (url: string) => {
-                    const relId = `rId${this.nextRelId++}`;
-                    this.relationships.push({
-                        id: relId,
-                        type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink',
-                        target: url,
-                    });
-                    return relId;
-                };
-                createTable(root, item, getRelId);
-            }
-        }
-
-        root.ele('w:sectPr');
-        return root.end({ prettyPrint: true });
+     * Resets internal state for a new generation
+     * @private
+     */
+    private resetState(): void {
+        this.relManager.reset();
+        this.imageManager.reset();
     }
 
-
-
     /**
-   * Generates [Content_Types].xml
-   * @private
-   * @returns {string} XML for package content types
-   */
-    private generateContentTypesXml(): string {
-        return `<?xml version="1.0" encoding="UTF-8"?>
-      <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-        <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-        <Default Extension="xml" ContentType="application/xml"/>
-        <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
-      </Types>`;
-    }
-
-
-
-    /**
-   * Generates package relationships (_rels/.rels)
-   * @private
-   * @returns {string} XML for package relationships
-   */
-    private generateRelsXml(): string {
-        return `<?xml version="1.0" encoding="UTF-8"?>
-      <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-        <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
-      </Relationships>`;
-    }
-
-
-
-    /**
-   * Generates document relationships (word/_rels/document.xml.rels)
-   * @private
-   * @returns {string} XML for document relationships
-   */
-    private generateDocumentRelsXml(): string {
-        const root = create({ version: '1.0', encoding: 'UTF-8' })
-            .ele('Relationships', {
-                xmlns: 'http://schemas.openxmlformats.org/package/2006/relationships',
-            });
-
-        for (const rel of this.relationships) {
-            root.ele('Relationship', {
-                Id: rel.id,
-                Type: rel.type,
-                Target: rel.target,
-                TargetMode: 'External',
-            });
-        }
-
-        return root.end({ prettyPrint: true });
-    }
-
-
-
-
-
-
-    /**
-   * Saves the generated DOCX to disk
-   * @param {string} outputPath - File path to save the document
-   * @returns {Promise<void>}
-   * @throws {DocxGenerationError} If saving fails
-   * 
-   * @example
-   * // Save to current directory
-   * await generator.save('my-document.docx');
-   * 
-   * @example
-   * // Save with path
-   * await generator.save('/path/to/documents/report.docx');
-   */
+     * Saves the generated DOCX to disk
+     * @param {string} outputPath - File path to save the document
+     * @returns {Promise<void>}
+     * @throws {DocxGenerationError} If saving fails
+     * 
+     * @example
+     * await generator.save('report.docx');
+     * 
+     * @example
+     * // Error handling
+     * try {
+     *   await generator.save('/invalid/path/report.docx');
+     * } catch (error) {
+     *   console.error('Save failed:', error.message);
+     * }
+     */
     public async save(outputPath: string): Promise<void> {
+        this.resetState();
+        
         try {
             const zip = new JSZip();
-            zip.file('[Content_Types].xml', this.generateContentTypesXml());
-            zip.folder('_rels')?.file('.rels', this.generateRelsXml());
-            zip.folder('word')?.file('document.xml', this.generateDocumentXml());
-
-            if (this.relationships.length > 0) {
-                zip.folder('word')?.folder('_rels')?.file('document.xml.rels', this.generateDocumentRelsXml());
-            }
-
+            await this.generateZipContent(zip);
+            
             return new Promise((resolve, reject) => {
                 zip.generateNodeStream({ type: 'nodebuffer', streamFiles: true })
                     .pipe(fs.createWriteStream(outputPath))
@@ -257,44 +116,31 @@ export class DocxGenerator {
         }
     }
 
-
-
-
-
-
-
     /**
-   * Returns the generated DOCX as a Buffer
-   * @returns {Promise<Buffer>} Buffer containing the DOCX file
-   * @throws {DocxGenerationError} If generation fails
-   * 
-   * @example
-   * // Get as Buffer
-   * const buffer = await generator.generateDocxBuffer();
-   * 
-   * @example
-   * // Use in Express.js response
-   * app.get('/download', async (req, res) => {
-   *   const generator = new DocxGenerator({ content: ["Downloaded document"] });
-   *   const buffer = await generator.generateDocxBuffer();
-   *   
-   *   res.setHeader('Content-Type', 
-   *     'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-   *   res.setHeader('Content-Disposition', 'attachment; filename=document.docx');
-   *   res.send(buffer);
-   * });
-   */
+     * Returns the generated DOCX as a Buffer
+     * @returns {Promise<Buffer>} Buffer containing the DOCX file
+     * @throws {DocxGenerationError} If generation fails
+     * 
+     * @example
+     * // Basic usage
+     * const buffer = await generator.generateDocxBuffer();
+     * 
+     * @example
+     * // Use in web response
+     * app.get('/download', async (req, res) => {
+     *   const buffer = await generator.generateDocxBuffer();
+     *   res.setHeader('Content-Type', 
+     *     'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+     *   res.send(buffer);
+     * });
+     */
     public async generateDocxBuffer(): Promise<Buffer> {
+        this.resetState();
+        
         try {
             const zip = new JSZip();
-            zip.file('[Content_Types].xml', this.generateContentTypesXml());
-            zip.folder('_rels')?.file('.rels', this.generateRelsXml());
-            zip.folder('word')?.file('document.xml', this.generateDocumentXml());
-
-            if (this.relationships.length > 0) {
-                zip.folder('word')?.folder('_rels')?.file('document.xml.rels', this.generateDocumentRelsXml());
-            }
-
+            await this.generateZipContent(zip);
+            
             return zip.generateAsync({
                 type: 'nodebuffer',
                 compression: 'DEFLATE',
@@ -305,40 +151,56 @@ export class DocxGenerator {
         }
     }
 
+    /**
+     * Generates all content for the DOCX zip file
+     * @private
+     * @param {JSZip} zip - JSZip instance to populate
+     */
+    private async generateZipContent(zip: JSZip): Promise<void> {
+        // Generate main document XML
+        const documentXml = generateDocumentXml(
+            this.definition,
+            this.relManager,
+            this.imageManager
+        );
 
+        // Add required files
+        zip.file('[Content_Types].xml', generateContentTypesXml());
+        zip.folder('_rels')?.file('.rels', RelationshipsManager.generateMainRelsXml());
+        zip.folder('word')?.file('document.xml', documentXml);
 
+        // Add images to the media folder
+        this.imageManager.saveImagesToZip(zip);
 
-
+        // Add document relationships if needed
+        if (this.relManager.hasRelationships()) {
+            const relsXml = this.relManager.generateDocumentRelsXml();
+            zip.folder('word')?.folder('_rels')?.file('document.xml.rels', relsXml);
+        }
+    }
 
     /**
-   * Static method to generate DOCX as Buffer from definition
-   * @static
-   * @param {DocxDefinition} definition - Document definition
-   * @returns {Promise<Buffer>} Buffer containing the DOCX file
-   * @throws {DocxGenerationError} If generation fails
-   * 
-   * @example
-   * // Simplest usage
-   * const buffer = await DocxGenerator.toBuffer({
-   *   content: ["Simple document from static method"]
-   * });
-   * 
-   * @example
-   * // Generate and send in one step
-   * app.post('/generate', async (req, res) => {
-   *   const buffer = await DocxGenerator.toBuffer(req.body);
-   *   // Send document to client...
-   * });
-   */
+     * Static method to generate DOCX as Buffer from definition
+     * @static
+     * @param {DocxDefinition} definition - Document definition
+     * @returns {Promise<Buffer>} Buffer containing the DOCX file
+     * @throws {DocxGenerationError} If generation fails
+     * 
+     * @example
+     * // Quick one-time generation
+     * const buffer = await DocxGenerator.toBuffer({
+     *   content: ["Static method document"]
+     * });
+     * 
+     * @example
+     * // Serverless function usage
+     * export const handler = async (event) => {
+     *   const buffer = await DocxGenerator.toBuffer(JSON.parse(event.body));
+     *   return { statusCode: 200, body: buffer.toString('base64'), isBase64Encoded: true };
+     * };
+     */
     public static async toBuffer(definition: DocxDefinition): Promise<Buffer> {
-        try {
-            const generator = new DocxGenerator(definition);
-            return await generator.generateDocxBuffer();
-        } catch (error) {
-            if (error instanceof DocxGenerationError) {
-                throw error;
-            }
-            throw new DocxGenerationError('Failed to generate DOCX', error);
-        }
+        const generator = new DocxGenerator(definition);
+        return generator.generateDocxBuffer();
     }
 }

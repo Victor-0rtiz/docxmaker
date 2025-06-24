@@ -150,15 +150,34 @@ export interface TableElement {
   };
 }
 
+
+/**
+ * Image element
+ */
+export interface ImageElement {
+  type: 'image';
+  /** Buffer binario o string base64 (el contenido de la imagen) */
+  image: Buffer | string;
+  /** ancho en píxeles (opcional) */
+  width?: number;
+  /** alto en píxeles (opcional) */
+  height?: number;
+  /** texto alternativo para accesibilidad */
+  alt?: string;
+  /** alineación (opcional) */
+  align?: 'left' | 'center' | 'right';
+}
+
+
 /**
  * Content allowed inside a paragraph
  */
-export type ParagraphContent = string | TextElement | LinkElement;
+export type ParagraphContent = string | TextElement | LinkElement | ImageElement;
 
 /**
  * All possible top-level elements in a document
  */
-export type DocumentElement = string | ParagraphElement | TextElement | LinkElement | TableElement;
+export type DocumentElement = string | ParagraphElement | TextElement | LinkElement | TableElement | ImageElement;
 
 /**
  * Complete structure used to define a DOCX document

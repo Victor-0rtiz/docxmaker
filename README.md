@@ -1,15 +1,15 @@
+# docxmaker (v0.0.3)
 
-# docxmaker
+A powerful and flexible DOCX document generator for Node.js using JSON definitions. Supports text, paragraphs, links, tables, and now images with automatic relationship management.
 
-A simple and flexible DOCX document generator for Node.js using JSON definitions. Supports text, paragraphs, links, and tables with automatic relationship management.
+## ✨ Enhanced Features in v0.0.3
 
-## ✨ Features
-
-- Generate `.docx` files from simple JSON structure
-- Supports plain text, styled paragraphs, hyperlinks, and tables
-- Hyperlink relationships handled automatically
-- Outputs as file or buffer
-- Zero native dependencies – works cross-platform
+- 🖼️ **Image Support** - Add images from Buffer or base64 strings
+- 🧩 **Decoupled Architecture** - Refactored implementation for better maintainability
+- 🧬 **Relationship Management** - Automatic handling of hyperlinks and images
+- 🎨 **Advanced Styling** - Comprehensive text and paragraph formatting options
+- 📊 **Table Enhancements** - Cell styling and column width control
+- 📦 **Zero Native Dependencies** - Works cross-platform
 
 ## 📦 Installation
 
@@ -17,12 +17,14 @@ A simple and flexible DOCX document generator for Node.js using JSON definitions
 npm install docxmaker
 ```
 
-## 🚀 Usage
+## 🚀 Basic Usage
 
 ```ts
 import { DocxGenerator } from 'docxmaker';
+import fs from 'fs';
 
-const definition = {
+// Document definition
+const doc = {
   content: [
     "Hello World!",
     {
@@ -37,64 +39,239 @@ const definition = {
       rows: [
         { cells: [{ content: ["Cell 1"] }, { content: ["Cell 2"] }] }
       ]
+    },
+    {
+      type: 'image',
+      image: fs.readFileSync('logo.png'),
+      width: 200,
+      alt: 'Company Logo'
     }
   ]
 };
 
-const generator = new DocxGenerator(definition);
-
-// Save to file
+// Using class instance
+const generator = new DocxGenerator(doc);
 await generator.save('document.docx');
 
-// Or get as buffer
-const buffer = await generator.generateDocxBuffer();
+// Or use static method for quick generation
+const buffer = await DocxGenerator.toBuffer(doc);
+fs.writeFileSync('document-static.docx', buffer);
 ```
 
 ## 📘 JSON Structure
 
-Supported content types:
+### Supported Content Types
 
-* `"text"`: Plain or styled text
-* `"paragraph"`: Paragraph with mixed content (text and links)
-* `"table"`: Tables with rows and cells
+1. **Text**:
+   ```ts
+   "Plain text string"
+   // or
+   { 
+     type: 'text',
+     text: 'Styled text',
+     style: { 
+       bold: true, 
+       color: 'FF0000',
+       fontSize: 14
+     }
+   }
+   ```
 
-You can nest and combine types as needed.
+2. **Paragraph** (supports mixed content):
+   ```ts
+   {
+     type: 'paragraph',
+     content: [
+       "Text ",
+       { type: 'link', text: 'Link', url: 'https://example.com' },
+       { type: 'image', image: buffer }
+     ],
+     style: {
+       align: 'center',
+       lineSpacing: 1.5
+     }
+   }
+   ```
 
-## 🛠 API
+3. **Table**:
+   ```ts
+   {
+     type: 'table',
+     style: {
+       columnWidths: [2000, 4000], // in twips (1/20 point)
+       backgroundColor: '#f0f0f0'
+     },
+     rows: [
+       {
+         cells: [
+           { 
+             content: ["Header 1"],
+             style: { width: 2000, backgroundColor: '#e0e0e0' }
+           },
+           { content: ["Header 2"] }
+         ]
+       }
+     ]
+   }
+   ```
+
+4. **Image**:
+   ```ts
+   {
+     type: 'image',
+     image: Buffer | base64String, // Image data
+     width: 150,                   // Width in pixels
+     height: 100,                  // Height in pixels (optional)
+     alt: 'Description',           // Alternative text
+     align: 'center'               // Alignment
+   }
+   ```
+
+## 🛠 Enhanced API
 
 ### `new DocxGenerator(definition)`
-
-Creates an instance from a definition.
+Creates an instance from a document definition. The implementation is now more modular and maintainable.
 
 ### `save(outputPath: string): Promise<void>`
-
 Saves the DOCX to a file.
 
 ### `generateDocxBuffer(): Promise<Buffer>`
-
 Returns the DOCX as a Node.js `Buffer`.
 
 ### `DocxGenerator.toBuffer(definition): Promise<Buffer>`
-
 Static method to quickly generate a buffer without creating an instance.
 
-## ⚠️ Errors
+## 🆕 What's New in v0.0.3
 
-All errors throw a `DocxGenerationError` which includes an optional `originalError`.
+### Image Support
+Easily add images to your documents from various sources:
+```ts
+// From file buffer
+{ 
+  type: 'image',
+  image: fs.readFileSync('logo.png')
+}
+
+// From base64 string
+{
+  type: 'image',
+  image: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...'
+}
+```
+
+### Refactored Architecture
+The core implementation has been completely refactored:
+- 🧩 Decoupled relationship management
+- 🖼️ Separate image handling
+- 🧬 Modular XML generators
+- 🔄 Improved state management
+
+
+
+## ⚠️ Error Handling
+
+All errors throw a `DocxGenerationError` which includes an optional `originalError` property.
+
+## 🖼️ Image Example
+
+```ts
+import fs from 'fs';
+
+const docWithImage = {
+  content: [
+    {
+      type: 'paragraph',
+      content: [
+        "Our Company Logo: ",
+        {
+          type: 'image',
+          image: fs.readFileSync('logo.png'),
+          width: 150,
+          alt: 'Company Logo',
+          align: 'center'
+        }
+      ]
+    }
+  ]
+};
+
+await new DocxGenerator(docWithImage).save('with-image.docx');
+```
+
+## 📚 Advanced Usage
+
+### Using Default Styles
+```ts
+const styledDoc = {
+  content: [
+    {
+      type: 'paragraph',
+      content: [
+        "Default text ",
+        { 
+          type: 'text', 
+          text: 'Bold red text',
+          style: { bold: true, color: 'FF0000' }
+        }
+      ],
+      style: {
+        fontSize: 12, // Applies to all text in paragraph
+        align: 'center'
+      }
+    }
+  ]
+};
+```
+
+### Mixed Content Table
+```ts
+const tableDoc = {
+  content: [
+    {
+      type: 'table',
+      style: { columnWidths: [3000, 5000] },
+      rows: [
+        {
+          cells: [
+            { content: ["Product"] },
+            { content: ["Description"] }
+          ]
+        },
+        {
+          cells: [
+            { 
+              content: ["DocxMaker"],
+              style: { backgroundColor: '#e6f7ff' }
+            },
+            { 
+              content: [
+                "A powerful DOCX generator ",
+                { 
+                  type: 'link', 
+                  text: 'GitHub', 
+                  url: 'https://github.com/your-repo'
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+};
+```
 
 ## License
 MIT
 
-
 ## ✍️ Authors
-@oss-dev – Creator and maintainer
+@oss-dev - Creator and maintainer
 
-Inspired by the simplicity and declarative structure of libraries like ([pdfmake](https://www.npmjs.com/package/pdfmake)).
+Inspired by the simplicity of libraries like [pdfmake](https://www.npmjs.com/package/pdfmake).
 
-Thanks to the open source community and tools like:
-
-([xmlbuilder2](https://www.npmjs.com/package/xmlbuilder2)) – for building well-structured XML
-
-([jszip](https://www.npmjs.com/package/jszip)) – for generating ZIP-based DOCX packages
+## Dependencies
+Special thanks to:
+- [xmlbuilder2](https://www.npmjs.com/package/xmlbuilder2) - XML construction
+- [jszip](https://www.npmjs.com/package/jszip) - DOCX package generation
 
 Contributions are welcome!
