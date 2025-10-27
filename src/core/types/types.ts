@@ -172,6 +172,13 @@ export interface ImageElement {
 }
 
 
+export type HeaderFooterType = 'default';
+
+export interface HeaderFooterDefinition {
+  type?: HeaderFooterType;                 // futuro: 'first' | 'even'
+  content: DocxDefinition['content'];      // reutiliza el mismo formato que body
+}
+
 /**
  * Content allowed inside a paragraph
  */
@@ -203,4 +210,6 @@ export interface DocxDefinition {
    * }
    */
   content: DocumentElement[];
+  header?: HeaderFooterDefinition;         // header definition
+  footer?: HeaderFooterDefinition;         // footer definition
 }

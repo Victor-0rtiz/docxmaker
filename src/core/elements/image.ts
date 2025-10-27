@@ -4,7 +4,7 @@ import { ImageElement } from "../types/types.js";
  * Creates an image element in DOCX document XML structure
  * 
  * This function handles:
- * 1. Image data processing (base64 strings or Buffers)
+ * 1. Image data processing (base64 strings, Buffers, Uint8Array)
  * 2. Image format detection
  * 3. Image registration in the document
  * 4. Relationship ID assignment
@@ -20,35 +20,6 @@ import { ImageElement } from "../types/types.js";
  * @param {function} getImageRelId - Callback to get relationship ID for an image
  *        @param {string} filename - Registered image filename
  *        @returns {string} Relationship ID for the image reference
- * 
- * @example
- * // Inside document generation
- * createImage(
- *   xmlParent, 
- *   { 
- *     type: 'image',
- *     image: fs.readFileSync('logo.png'),
- *     width: 200,
- *     height: 100,
- *     alt: 'Company Logo',
- *     align: 'center'
- *   },
- *   imageManager.registerImage.bind(imageManager),
- *   relManager.getImageRelId.bind(relManager)
- * );
- * 
- * @example
- * // With base64 image
- * createImage(
- *   xmlParent,
- *   {
- *     type: 'image',
- *     image: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...',
- *     alt: 'Base64 Image'
- *   },
- *   registerFn,
- *   relIdFn
- * );
  */
 export function createImage(
   parent: any, 
@@ -59,123 +30,96 @@ export function createImage(
   // --- IMAGE DATA PROCESSING ---
   let imageBuffer: Buffer;
   let extension = 'png'; // Default extension
-  
+
+  // Helper: normaliza cualquier entrada binaria a Buffer
+  const toBuffer = (input: any): Buffer | undefined => {
+    if (Buffer.isBuffer(input)) return input;                // Buffer
+    if (input instanceof Uint8Array) return Buffer.from(input); // Uint8Array / Node readFile
+    if (input?.buffer instanceof ArrayBuffer) {
+      // Cubre TypedArrays como Uint8ClampedArray, etc.
+      return Buffer.from(input.buffer);
+    }
+    return undefined;
+  };
+
   if (typeof image.image === 'string') {
-    // Handle base64 encoded images
+    // Base64 o data URI
     const matches = image.image.match(/^data:image\/(\w+);base64,(.+)$/);
     if (matches) {
-      // Extract from data URI format
       extension = matches[1] === 'jpeg' ? 'jpg' : matches[1];
       imageBuffer = Buffer.from(matches[2], 'base64');
     } else {
-      // Assume plain base64 string
       imageBuffer = Buffer.from(image.image, 'base64');
     }
-  } else if (Buffer.isBuffer(image.image)) {
-    // Handle Buffer input
-    imageBuffer = image.image;
-    
-    // Detect image format from magic number
+  } else if (image.image && typeof image.image === 'object' && 'path' in image.image) {
+    // ⚠️ No debería llegar aquí si resolveAssets corrió antes
+    throw new Error('Image with { path } must be resolved to Buffer before createImage()');
+  } else {
+    const buf = toBuffer(image.image);
+    if (!buf) throw new Error('Unsupported image input');
+    imageBuffer = buf;
+
+    // Detecta formato por magic number
     const header = imageBuffer.subarray(0, 4);
     const headerHex = header.toString('hex').toUpperCase();
-    
     if (headerHex.startsWith('89504E47')) extension = 'png';        // PNG
     else if (headerHex.startsWith('FFD8FF')) extension = 'jpg';     // JPEG
     else if (headerHex.startsWith('47494638')) extension = 'gif';   // GIF
     else if (headerHex.startsWith('424D')) extension = 'bmp';       // BMP
-  } else if (image.image && typeof image.image === 'object' && 'path' in image.image) {
-    // ⚠️ Esto no debería ocurrir si resolveAssets corrió antes
-    throw new Error('Image with { path } must be resolved to Buffer before createImage()');
-  } else {
-    throw new Error('Unsupported image input');
   }
-  
+
   // --- IMAGE REGISTRATION ---
   const filename = registerImage(imageBuffer, extension);
-  
+
   // --- RELATIONSHIP MANAGEMENT ---
   const relId = getImageRelId(filename);
-  
+
   // --- DIMENSION CALCULATION ---
-  // Use provided dimensions or default to 100x100
   const widthPx = image.width || 100;
   const heightPx = image.height || 100;
-  
-  // Convert pixels to EMU (English Metric Units)
-  // 1 pixel = 9525 EMU (DOCX standard)
   const widthEmu = Math.round(widthPx * 9525);
   const heightEmu = Math.round(heightPx * 9525);
-  
+
   // --- XML STRUCTURE GENERATION ---
-  // Create container paragraph
   const p = parent.ele('w:p');
-  
-  // Apply alignment if specified
+
   if (image.align) {
     const pPr = p.ele('w:pPr');
     pPr.ele('w:jc', { 'w:val': image.align });
   }
 
-  // Create text run and drawing element
   const run = p.ele('w:r');
   const drawing = run.ele('w:drawing');
 
-  // Inline container with positioning
-  const inline = drawing.ele('wp:inline', {
-    distT: "0",  // Top distance
-    distB: "0",  // Bottom distance
-    distL: "0",  // Left distance
-    distR: "0"   // Right distance
-  });
+  const inline = drawing.ele('wp:inline', { distT: "0", distB: "0", distL: "0", distR: "0" });
 
-  // Set image dimensions
-  inline.ele('wp:extent', {
-    cx: widthEmu.toString(),  // Width in EMU
-    cy: heightEmu.toString()  // Height in EMU
-  });
+  inline.ele('wp:extent', { cx: widthEmu.toString(), cy: heightEmu.toString() });
 
-  // Document properties (accessibility)
   inline.ele('wp:docPr', {
-    id: "1",  // Unique identifier
-    name: image.alt || 'Imagen',  // Image name
-    descr: image.alt || ''        // Alternative text
+    id: "1",
+    name: image.alt || 'Imagen',
+    descr: image.alt || ''
   });
 
-  // Graphic container
   const graphic = inline.ele('a:graphic');
   const graphicData = graphic.ele('a:graphicData', {
     uri: "http://schemas.openxmlformats.org/drawingml/2006/picture"
   });
 
-  // Picture element
   const pic = graphicData.ele('pic:pic');
 
-  // Non-visual properties
   const nvPicPr = pic.ele('pic:nvPicPr');
-  nvPicPr.ele('pic:cNvPr', {
-    id: "0",  // Non-visual ID
-    name: image.alt || 'Imagen',  // Display name
-    descr: image.alt || ''        // Description
-  });
-  nvPicPr.ele('pic:cNvPicPr');  // Non-visual picture properties
+  nvPicPr.ele('pic:cNvPr', { id: "0", name: image.alt || 'Imagen', descr: image.alt || '' });
+  nvPicPr.ele('pic:cNvPicPr');
 
-  // Image fill properties
   const blipFill = pic.ele('pic:blipFill');
-  blipFill.ele('a:blip', {
-    'r:embed': relId  // Relationship ID reference
-  });
-  blipFill.ele('a:stretch').ele('a:fillRect');  // Fill mode
+  blipFill.ele('a:blip', { 'r:embed': relId });
+  blipFill.ele('a:stretch').ele('a:fillRect');
 
-  // Shape properties
   const spPr = pic.ele('pic:spPr');
-  const xfrm = spPr.ele('a:xfrm');  // Transformation
-  xfrm.ele('a:off', { x: "0", y: "0" });  // Position
-  xfrm.ele('a:ext', {
-    cx: widthEmu.toString(),  // Width
-    cy: heightEmu.toString()  // Height
-  });
-  
-  // Geometry (rectangle shape)
-  spPr.ele('a:prstGeom', { prst: "rect" })
-      .ele('a:avLst');  // Adjustment values list
+  const xfrm = spPr.ele('a:xfrm');
+  xfrm.ele('a:off', { x: "0", y: "0" });
+  xfrm.ele('a:ext', { cx: widthEmu.toString(), cy: heightEmu.toString() });
+
+  spPr.ele('a:prstGeom', { prst: "rect" }).ele('a:avLst');
 }
