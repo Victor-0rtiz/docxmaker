@@ -160,7 +160,7 @@ export type ImageInput =
 export interface ImageElement {
   type: 'image';
   /** Buffer binario o string base64 (el contenido de la imagen) */
-  image: Buffer | string;
+  image: ImageInput;
   /** ancho en píxeles (opcional) */
   width?: number;
   /** alto en píxeles (opcional) */
