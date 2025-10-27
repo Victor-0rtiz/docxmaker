@@ -32,9 +32,9 @@
     "xmlbuilder2": "^3.1.1"
   },
   "devDependencies": {
-    "@types/jszip": "^3.4.0",
+    "@types/jszip": "^3.4.1",
     "@types/node": "^24.9.1",
     "tsup": "^8.5.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.9.3"
   }
 }
