@@ -149,7 +149,10 @@ export interface TableElement {
     backgroundColor?: string;
   };
 }
-
+export type ImageInput =
+  | Buffer                // 
+  | string               // base64 o data URI
+  | { path: string };
 
 /**
  * Image element

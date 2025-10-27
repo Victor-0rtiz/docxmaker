@@ -1,6 +1,6 @@
 {
   "name": "docxmaker",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "A lightweight library to generate DOCX documents from JSON definitions.",
   "author": "oss-dev",
   "license": "MIT",
@@ -33,7 +33,7 @@
   },
   "devDependencies": {
     "@types/jszip": "^3.4.0",
-    "@types/node": "^24.0.1",
+    "@types/node": "^24.9.1",
     "tsup": "^8.5.0",
     "typescript": "^5.8.3"
   }
