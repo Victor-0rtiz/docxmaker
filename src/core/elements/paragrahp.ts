@@ -2,6 +2,8 @@ import { ParagraphElement } from "../types/types.js";
 import { createImage } from "./image.js";
 import { createlink } from "./link.js";
 import { createText } from "./text.js";
+import { createField } from "./field.js";
+
 
 /**
  * Creates a WordprocessingML paragraph element with content and styling
@@ -120,14 +122,20 @@ export function createParagraph(
     // Handle plain text or text elements
     if (typeof part === 'string' || part.type === 'text') {
       createText(p, part, paragraph.style);
-    } 
-    
+    }
+
     // Handle hyperlinks
     else if (part.type === 'link') {
       const relId = getHyperlinkRelId(part.url);
       createlink(p, part, relId);
-    } 
-    
+    }
+
+    // Handle fields (PAGE / NUMPAGES)
+    else if (part.type === 'field') {
+      createField(p, part, paragraph.style);
+    }
+
+
     // Handle images
     else if (part.type === 'image') {
       createImage(

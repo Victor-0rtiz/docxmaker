@@ -218,6 +218,47 @@ export interface ImageElement {
 }
 
 
+/**
+ * Field element (PAGE / NUMPAGES) for Word field codes
+ */
+export interface FieldElement {
+  type: 'field';
+  /**
+   * Word field instruction.
+   * - PAGE: current page number
+   * - NUMPAGES: total pages
+   */
+  field: 'PAGE' | 'NUMPAGES';
+}
+
+/**
+ * List element (simple list without numbering.xml)
+ * Renders each item as its own paragraph with bullet or numeric prefix.
+ */
+export interface ListElement {
+  type: 'list';
+
+  /** 'unordered' -> bullets, 'ordered' -> 1.,2.,3. */
+  variant?: 'unordered' | 'ordered';
+
+  /**
+   * List items. Each item is a "paragraph-like" content array
+   * so it can include text/link/image/field mixed.
+   */
+  items: ParagraphContent[][];
+
+  /**
+   * Optional list style.
+   * - indentTwips: left indent for list block
+   * - hangingTwips: hanging indent for prefix width
+   */
+  style?: StyleText & {
+    indentTwips?: number;   // default 720 (0.5")
+    hangingTwips?: number;  // default 360 (0.25")
+  };
+}
+
+
 export type HeaderFooterType = 'default';
 
 export interface HeaderFooterDefinition {
@@ -228,12 +269,12 @@ export interface HeaderFooterDefinition {
 /**
  * Content allowed inside a paragraph
  */
-export type ParagraphContent = string | TextElement | LinkElement | ImageElement;
+export type ParagraphContent = string | TextElement | LinkElement | ImageElement | FieldElement;
 
 /**
  * All possible top-level elements in a document
  */
-export type DocumentElement = string | ParagraphElement | TextElement | LinkElement | TableElement | ImageElement;
+export type DocumentElement = string | ParagraphElement | TextElement | LinkElement | TableElement | ImageElement | ListElement;
 
 /**
  * Complete structure used to define a DOCX document

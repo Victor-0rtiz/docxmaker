@@ -32,7 +32,7 @@
   },
   "peerDependencies": {
     "jszip": "^3.10.1",
-    "xmlbuilder2": "^4.0.3"
+    "xmlbuilder2": "^3.1.1"
   },
   "devDependencies": {
     "@types/jszip": "^3.4.1",

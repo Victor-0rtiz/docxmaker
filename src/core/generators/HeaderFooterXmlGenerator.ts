@@ -6,6 +6,8 @@ import { createText } from '../elements/text.js';
 import { createTable } from '../elements/table.js';
 import { createImage } from '../elements/image.js';
 import { createParagraph } from '../elements/paragrahp.js';
+import { createList } from '../elements/list.js';
+
 
 /**
  * Generates word/header1.xml from a header definition
@@ -67,7 +69,16 @@ export function generateHeaderXml(
         (data, ext) => imageManager.registerImage(data, ext),
         filename => relManager.addImage(filename)
       );
+    } else if (item.type === 'list') {
+      createList(
+        root,
+        item,
+        url => relManager.addHyperlink(url),
+        (data, ext) => imageManager.registerImage(data, ext),
+        filename => relManager.addImage(filename)
+      );
     }
+
   }
 
   return root.end({ prettyPrint: true });

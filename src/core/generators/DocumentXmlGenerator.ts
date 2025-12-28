@@ -6,6 +6,8 @@ import { createImage } from '../elements/image.js';
 import { ImageManager } from './ImageManager.js';
 import { RelationshipsManager } from './RelationshipsGenerator.js';
 import { createParagraph } from '../elements/paragrahp.js';
+import { createList } from '../elements/list.js';
+
 
 /**
  * Generates the main document.xml content for a DOCX file
@@ -77,7 +79,16 @@ export function generateDocumentXml(
         (data, ext) => imageManager.registerImage(data, ext),
         (filename) => relManager.addImage(filename)
       );
+    } else if (item.type === 'list') {
+      createList(
+        root,
+        item,
+        (url) => relManager.addHyperlink(url),
+        (data, ext) => imageManager.registerImage(data, ext),
+        (filename) => relManager.addImage(filename)
+      );
     }
+
   }
 
   // Add required section properties to the document

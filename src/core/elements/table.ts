@@ -2,6 +2,8 @@ import { TableElement } from "../types/types.js";
 import { createText } from "./text.js";
 import { createlink } from "./link.js";
 import { createImage } from "./image.js";
+import { createField } from "./field.js";
+
 
 /**
  * Creates a WordprocessingML table element with rows, cells, and content
@@ -99,13 +101,13 @@ export function createTable(
 
     // Create table borders with default settings
     const borders = tblPr.ele('w:tblBorders');
-    const borderSettings = { 
+    const borderSettings = {
         'w:val': 'single',   // Border style
         'w:sz': '4',         // Border size (1/8 point)
         'w:space': '0',      // Border spacing
         'w:color': 'auto'    // Automatic color
     };
-    
+
     // Apply borders to all sides
     borders.ele('w:top', borderSettings).up()
         .ele('w:left', borderSettings).up()
@@ -183,14 +185,20 @@ export function createTable(
                 // Handle plain text or text elements
                 if (typeof content === 'string' || content.type === 'text') {
                     createText(p, content, cell.style);
-                } 
-                
+                }
+
                 // Handle hyperlinks
                 else if (content.type === 'link') {
                     const relId = getHyperlinkRelId(content.url);
                     createlink(p, content, relId);
-                } 
-                
+                }
+
+                // Handle fields
+                else if (content.type === 'field') {
+                    createField(p, content, cell.style);
+                }
+
+
                 // Handle images
                 else if (content.type === 'image') {
                     createImage(
