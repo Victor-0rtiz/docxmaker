@@ -1,9 +1,50 @@
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
+
+---
+
+## [0.0.5] - 2025-12-27
+
+### Added
+- 🌐 **Browser support**: DOCX generation now works natively in the browser.
+  - Automatic file download via `save('file.docx')`.
+  - New static helper `DocxGenerator.toBlob()` for browser usage.
+- 📋 **List support**:
+  - Added `list` element with `ordered` and `unordered` variants.
+  - List items support mixed content (`text`, `link`, `image`, `field`).
+  - Customizable indentation via `indentTwips` and `hangingTwips`.
+- 🔢 **Dynamic Word fields**:
+  - Added `field` element with support for `PAGE` and `NUMPAGES`.
+  - Designed for page numbering in headers and footers.
+- 🧩 **Unified document definition**:
+  - The same JSON structure now works in both Node.js and browser environments.
+- 🖼️ **Expanded image input support**:
+  - Browser: `Blob`, `File`, `ArrayBuffer`, `{ url }`.
+  - Node.js: `Buffer`, `Uint8Array`, `{ path }`.
+- 📦 **Conditional exports**:
+  - Added `browser` export entry to support bundlers like Vite and Webpack.
+
+### Changed
+- ⚙️ **Environment-specific generators**:
+  - Introduced separate `DocxGenerator` implementations for Node.js and browser.
+  - Shared core XML and ZIP logic to avoid duplication.
+- 🔒 **Dependency stability**:
+  - Pinned `xmlbuilder2` to `v3.1.1` due to browser incompatibilities in `v4.x`.
+- 🧱 Internal refactors to support multi-platform asset resolution (`resolveAssets.node` / `resolveAssets.web`).
+
+### Fixed
+- 🐛 Fixed browser runtime crash caused by `xmlbuilder2@4.x` when bundled with Vite.
+- 🖼️ Ensured image buffers are normalized (`Uint8Array`) across environments.
+- 📄 Improved header/footer relationship handling for browser builds.
+
+### Developer Notes
+Version `0.0.5` is a **feature release** focused on **cross-platform support** and **document structure parity**  
+between Node.js and browser environments, while preserving backward compatibility with `v0.0.4`.
 
 ---
 
@@ -81,3 +122,4 @@ Version `0.0.4` remains fully backward-compatible with previous definitions.
 - 🧱 Internal XML generation powered by `xmlbuilder2`.
 - 📦 ZIP packaging handled via `jszip`.
 - 📘 Basic `README.md` with getting-started examples.
+

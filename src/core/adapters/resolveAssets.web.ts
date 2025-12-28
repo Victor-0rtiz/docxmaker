@@ -1,5 +1,13 @@
 import type { DocxDefinition } from '../types/types.js';
 
+/**
+ * Normalizes various browser binary inputs (Blob/File/ArrayBuffer/TypedArray)
+ * into a Uint8Array so the downstream XML generators can treat all images
+ * uniformly.
+ *
+ * @param {any} input Potential binary-like value supplied by consumers.
+ * @returns {Promise<Uint8Array | null>} Uint8Array when conversion succeeds, otherwise null.
+ */
 async function toUint8Array(input: any): Promise<Uint8Array | null> {
   if (input instanceof Uint8Array) return input;
   if (input instanceof ArrayBuffer) return new Uint8Array(input);
@@ -12,6 +20,17 @@ async function toUint8Array(input: any): Promise<Uint8Array | null> {
   return null;
 }
 
+/**
+ * Resolves browser-friendly assets before XML generation.
+ *
+ * - Clones the definition to keep the public object immutable.
+ * - Fetches `{ image: { url } }` and stores them as Uint8Array.
+ * - Converts Blob/File/ArrayBuffer/TypedArray inputs with `toUint8Array`.
+ * - Recursively visits paragraphs, tables, headers, and footers.
+ *
+ * @param {DocxDefinition} def Original definition with potential remote or structured assets.
+ * @returns {Promise<DocxDefinition>} Definition where every image is a Uint8Array or base64 string.
+ */
 export async function resolveAssetsWeb(def: DocxDefinition): Promise<DocxDefinition> {
   const clone: DocxDefinition =
     typeof structuredClone === 'function'

@@ -13,14 +13,40 @@ import { generateHeaderXml, generateFooterXml } from './generators/HeaderFooterX
 import { resolveAssetsNode } from './adapters/resolveAssets.node.js';
 
 /**
- * Generates DOCX documents from structured definitions (Node.js version).
+ * Generates DOCX documents from structured definitions (Node.js runtime).
  *
- * Supports header/footer, images, hyperlinks, tables.
+ * Handles headers, footers, hyperlinks, images, tables, and ensures all
+ * required OPC parts are zipped into a valid `.docx` package.
+ *
+ * @example
+ * const definition: DocxDefinition = {
+ *   header: { content: ['Sample Company'] },
+ *   footer: { content: ['Page '] },
+ *   content: [
+ *     'Hello World!',
+ *     {
+ *       type: 'paragraph',
+ *       content: [
+ *         'Visit ',
+ *         { type: 'link', text: 'GitHub', url: 'https://github.com' },
+ *       ],
+ *     },
+ *     { type: 'image', image: { path: 'logo.png' } },
+ *   ],
+ * };
+ * const generator = new DocxGenerator(definition);
+ * await generator.save('output.docx');
  */
 export class DocxGenerator {
   private relManager: RelationshipsManager;
   private imageManager: ImageManager;
 
+  /**
+   * Creates a DOCX generator instance.
+   *
+   * @param {DocxDefinition} definition Document structure definition.
+   * @throws {DocxGenerationError} When the definition omits a valid content array.
+   */
   constructor(private definition: DocxDefinition) {
     if (!definition || !Array.isArray(definition.content)) {
       throw new DocxGenerationError('Invalid document definition. "content" must be an array.');
@@ -29,7 +55,10 @@ export class DocxGenerator {
     this.imageManager = new ImageManager();
   }
 
-  /** @private */
+  /**
+   * @private
+   * Resets all per-export managers to avoid leaked relationships or images.
+   */
   private resetState(): void {
     this.relManager.reset();
     this.imageManager.reset();
@@ -41,6 +70,9 @@ export class DocxGenerator {
    * If a different extension is provided, throws an error.
    *
    * @private
+  * @param {string} outputPath Target path provided by the caller.
+  * @returns {string} Sanitized path that always ends with .docx.
+   * @throws {DocxGenerationError} When the extension is not .docx.
    */
   private ensureDocxPath(outputPath: string): string {
     const ext = path.extname(outputPath);
@@ -52,7 +84,11 @@ export class DocxGenerator {
   }
 
   /**
-   * Saves the generated DOCX to disk (Node.js).
+   * Saves the generated DOCX package to disk.
+   *
+    * @param {string} outputPath Destination path for the .docx file.
+    * @returns {Promise<void>} Resolves when the ZIP stream finishes writing.
+   * @throws {DocxGenerationError} When asset resolution or streaming fails.
    */
   public async save(outputPath: string): Promise<void> {
     this.resetState();
@@ -76,7 +112,10 @@ export class DocxGenerator {
   }
 
   /**
-   * Returns the generated DOCX as a Buffer (Node.js).
+   * Returns the generated DOCX as a Node.js Buffer.
+   *
+    * @returns {Promise<Buffer>} Complete `.docx` payload in memory.
+   * @throws {DocxGenerationError} When asset resolution or ZIP generation fails.
    */
   public async generateDocxBuffer(): Promise<Buffer> {
     this.resetState();
@@ -103,7 +142,12 @@ export class DocxGenerator {
    * - document.xml referencing them via sectPr
    * - [Content_Types].xml with overrides
    * - document.xml.rels with hyperlink/image/header/footer rels
-   */
+  *
+  * @private
+  * @param {JSZip} zip JSZip instance to populate.
+  * @param {DocxDefinition} def Fully resolved document definition (buffers instead of paths).
+  * @returns {Promise<void>} Resolves once every OPC part is written into the archive.
+  */
   private async generateZipContent(zip: JSZip, def: DocxDefinition): Promise<void> {
     // 1) Optional header/footer parts
     let headerRelId: string | undefined;
@@ -146,7 +190,11 @@ export class DocxGenerator {
   }
 
   /**
-   * Static method to generate DOCX as Buffer from definition.
+   * Static convenience helper to generate a DOCX buffer from a definition.
+   *
+    * @param {DocxDefinition} definition Document definition to render.
+    * @returns {Promise<Buffer>} Buffer with the generated document.
+   * @throws {DocxGenerationError} When the underlying generation fails.
    */
   public static async toBuffer(definition: DocxDefinition): Promise<Buffer> {
     const generator = new DocxGenerator(definition);

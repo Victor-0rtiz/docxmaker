@@ -1,6 +1,17 @@
 import { readFile } from 'node:fs/promises';
 import type { DocxDefinition } from '../types/types.js';
 
+/**
+ * Deeply resolves file-system backed assets for Node.js environments.
+ *
+ * - Clones the provided definition to avoid mutating caller data.
+ * - Converts every `{ image: { path } }` into a Uint8Array read via fs/promises.
+ * - Leaves Buffers/base64 strings untouched.
+ * - Recursively traverses paragraphs, tables, headers, and footers.
+ *
+ * @param {DocxDefinition} def Original document definition supplied by the consumer.
+ * @returns {Promise<DocxDefinition>} New definition where all file-based images are binary blobs.
+ */
 export async function resolveAssetsNode(def: DocxDefinition): Promise<DocxDefinition> {
   const clone: DocxDefinition =
     typeof structuredClone === 'function'

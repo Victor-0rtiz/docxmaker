@@ -10,6 +10,14 @@ import { generateHeaderXml, generateFooterXml } from './generators/HeaderFooterX
 
 import { resolveAssetsWeb } from './adapters/resolveAssets.web.js';
 
+/**
+ * Normalizes a filename so it always ends with the `.docx` extension.
+ * Rejects other extensions to avoid confusing downloads such as `.zip`.
+ *
+ * @param {string} name Desired filename provided by consumers.
+ * @returns {string} Sanitized filename ending with `.docx`.
+ * @throws {DocxGenerationError} When another extension is supplied.
+ */
 function ensureDocxName(name: string): string {
   const lower = name.toLowerCase();
 
@@ -25,6 +33,12 @@ function ensureDocxName(name: string): string {
   return `${name}.docx`;
 }
 
+/**
+ * Triggers a download for the provided Blob using an ephemeral anchor.
+ *
+ * @param {Blob} blob Generated DOCX payload in the browser.
+ * @param {string} filename Final filename to suggest in the download dialog.
+ */
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -46,6 +60,12 @@ export class DocxGenerator {
   private relManager: RelationshipsManager;
   private imageManager: ImageManager;
 
+  /**
+   * Creates a DOCX generator instance for browser runtimes.
+   *
+   * @param {DocxDefinition} definition Structured document definition.
+   * @throws {DocxGenerationError} When `content` is missing or not an array.
+   */
   constructor(private definition: DocxDefinition) {
     if (!definition || !Array.isArray(definition.content)) {
       throw new DocxGenerationError('Invalid document definition. "content" must be an array.');
@@ -62,6 +82,10 @@ export class DocxGenerator {
 
   /**
    * Saves the generated DOCX by downloading it in the browser.
+    *
+    * @param {string} filename Desired download filename (without or with `.docx`).
+    * @returns {Promise<void>} Resolves when the Blob is ready and the download triggers.
+    * @throws {DocxGenerationError} When asset resolution or ZIP creation fails.
    */
   public async save(filename: string): Promise<void> {
     this.resetState();
@@ -85,7 +109,10 @@ export class DocxGenerator {
   }
 
   /**
-   * Generates a Blob (browser).
+    * Generates a DOCX Blob (browser).
+    *
+    * @returns {Promise<Blob>} Blob containing the `.docx` package.
+    * @throws {DocxGenerationError} When asset resolution or ZIP creation fails.
    */
   public async generateDocxBlob(): Promise<Blob> {
     this.resetState();
@@ -105,7 +132,12 @@ export class DocxGenerator {
   }
 
   /**
-   * Same zip generation logic as Node, including header/footer.
+   * Same zip generation logic as Node, including optional header/footer parts.
+   *
+   * @private
+   * @param {JSZip} zip JSZip instance to populate.
+   * @param {DocxDefinition} def Fully resolved document definition (no remote assets pending).
+   * @returns {Promise<void>} Resolves once every OPC part is enqueued in the archive.
    */
   private async generateZipContent(zip: JSZip, def: DocxDefinition): Promise<void> {
     let headerRelId: string | undefined;
@@ -144,7 +176,10 @@ export class DocxGenerator {
   }
 
   /**
-   * Static helper for browser: returns Blob.
+   * Static helper for browsers that only need a Blob result.
+   *
+   * @param {DocxDefinition} definition Document definition to render.
+   * @returns {Promise<Blob>} Blob containing the generated file.
    */
   public static async toBlob(definition: DocxDefinition): Promise<Blob> {
     const generator = new DocxGenerator(definition);
