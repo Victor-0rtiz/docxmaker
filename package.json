@@ -19,22 +19,25 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "browser": "./dist/browser/index.browser.js",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs",
       "types": "./dist/index.d.ts"
     }
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts --out-dir dist"
+    "build:node": "tsup src/index.ts --format esm,cjs --dts --out-dir dist --platform=node --target=node18",
+    "build:web": "tsup src/index.browser.ts --format esm --dts --out-dir dist/browser --platform=browser --target=es2020 --no-splitting",
+    "build": "npm run build:node && npm run build:web"
   },
   "peerDependencies": {
     "jszip": "^3.10.1",
-    "xmlbuilder2": "^3.1.1"
+    "xmlbuilder2": "^4.0.3"
   },
   "devDependencies": {
     "@types/jszip": "^3.4.1",
-    "@types/node": "^24.9.1",
-    "tsup": "^8.5.0",
+    "@types/node": "^25.0.3",
+    "tsup": "^8.5.1",
     "typescript": "^5.9.3"
   }
 }

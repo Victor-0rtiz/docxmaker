@@ -86,7 +86,7 @@ export function createTable(
     parent: any,
     table: TableElement,
     getHyperlinkRelId: (url: string) => string,
-    registerImage: (data: Buffer, extension: string) => string,
+    registerImage: (data: Uint8Array, extension: string) => string,
     getImageRelId: (filename: string) => string
 ) {
     // --- TABLE CREATION ---

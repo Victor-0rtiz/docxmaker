@@ -61,7 +61,7 @@ export function createParagraph(
   parent: any,
   paragraph: ParagraphElement,
   getHyperlinkRelId: (url: string) => string,
-  registerImage: (data: Buffer, extension: string) => string,
+  registerImage: (data: Uint8Array, extension: string) => string,
   getImageRelId: (filename: string) => string
 ) {
   // Create paragraph element

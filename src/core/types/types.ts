@@ -149,25 +149,71 @@ export interface TableElement {
     backgroundColor?: string;
   };
 }
+/**
+ * Image input supported by docxmaker (Node + Browser).
+ *
+ * ✅ Node.js:
+ * - Buffer
+ * - base64 string / data URI string
+ * - { path: string } (resolved via fs/promises)
+ *
+ * ✅ Browser:
+ * - base64 string / data URI string
+ * - Blob / File
+ * - Uint8Array / ArrayBuffer
+ * - { url: string } (resolved via fetch; requires CORS if remote)
+ *
+ * Notes:
+ * - `{ path }` is Node-only (no filesystem in browsers).
+ * - `{ url }` is Browser-friendly; in Node you can still fetch manually and pass Buffer if you want.
+ */
 export type ImageInput =
-  | Buffer                // 
-  | string               // base64 o data URI
-  | { path: string };
+  | Buffer
+  | string
+  | Uint8Array
+  | ArrayBuffer
+  | Blob
+  | File
+  | { path: string }
+  | { url: string };
+
 
 /**
  * Image element
  */
 export interface ImageElement {
   type: 'image';
-  /** Buffer binario o string base64 (el contenido de la imagen) */
+
+  /**
+   * Image data source.
+   *
+   * @example Node (recommended)
+   * image: { path: './logo.png' }
+   *
+   * @example Node (buffer)
+   * image: fs.readFileSync('./logo.png')
+   *
+   * @example Browser (File input)
+   * image: file
+   *
+   * @example Browser (URL)
+   * image: { url: 'https://example.com/logo.png' }
+   *
+   * @example Any (data URI)
+   * image: 'data:image/png;base64,iVBORw0K...'
+   */
   image: ImageInput;
-  /** ancho en píxeles (opcional) */
+
+  /** Width in pixels (optional) */
   width?: number;
-  /** alto en píxeles (opcional) */
+
+  /** Height in pixels (optional) */
   height?: number;
-  /** texto alternativo para accesibilidad */
+
+  /** Alternative text for accessibility */
   alt?: string;
-  /** alineación (opcional) */
+
+  /** Alignment (optional) */
   align?: 'left' | 'center' | 'right';
 }
 

@@ -1,6 +1,4 @@
 import JSZip from 'jszip';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 
 import { RelationshipsManager } from './generators/RelationshipsGenerator.js';
 import { ImageManager } from './generators/ImageManager.js';
@@ -10,12 +8,39 @@ import { generateContentTypesXml } from './generators/ContentTypesGenerator.js';
 import { DocxGenerationError } from './DocxGenerationError.js';
 import { generateHeaderXml, generateFooterXml } from './generators/HeaderFooterXmlGenerator.js';
 
-import { resolveAssetsNode } from './adapters/resolveAssets.node.js';
+import { resolveAssetsWeb } from './adapters/resolveAssets.web.js';
+
+function ensureDocxName(name: string): string {
+  const lower = name.toLowerCase();
+
+  if (lower.endsWith('.docx')) return name;
+
+  // if user typed some extension other than .docx, reject
+  if (/\.[a-z0-9]+$/i.test(name)) {
+    throw new DocxGenerationError(
+      `Output file must use .docx extension. Received "${name}".`
+    );
+  }
+
+  return `${name}.docx`;
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 /**
- * Generates DOCX documents from structured definitions (Node.js version).
+ * Generates DOCX documents from structured definitions (Browser version).
  *
- * Supports header/footer, images, hyperlinks, tables.
+ * - save("file.docx") triggers a download
+ * - supports images as base64, Uint8Array/ArrayBuffer, Blob/File, or { url }
  */
 export class DocxGenerator {
   private relManager: RelationshipsManager;
@@ -36,76 +61,53 @@ export class DocxGenerator {
   }
 
   /**
-   * Ensures the output filename uses a .docx extension.
-   * If no extension is provided, appends ".docx".
-   * If a different extension is provided, throws an error.
-   *
-   * @private
+   * Saves the generated DOCX by downloading it in the browser.
    */
-  private ensureDocxPath(outputPath: string): string {
-    const ext = path.extname(outputPath);
-    if (!ext) return `${outputPath}.docx`;
-    if (ext.toLowerCase() !== '.docx') {
-      throw new DocxGenerationError(`Output file must use .docx extension. Received "${ext}".`);
-    }
-    return outputPath;
-  }
-
-  /**
-   * Saves the generated DOCX to disk (Node.js).
-   */
-  public async save(outputPath: string): Promise<void> {
+  public async save(filename: string): Promise<void> {
     this.resetState();
     try {
-      const finalPath = this.ensureDocxPath(outputPath);
+      const finalName = ensureDocxName(filename);
 
       const zip = new JSZip();
-      const resolved = await resolveAssetsNode(this.definition);
+      const resolved = await resolveAssetsWeb(this.definition);
       await this.generateZipContent(zip, resolved);
 
-      await new Promise<void>((resolve, reject) => {
-        zip
-          .generateNodeStream({ type: 'nodebuffer', streamFiles: true })
-          .pipe(fs.createWriteStream(finalPath))
-          .on('finish', resolve)
-          .on('error', reject);
+      const blob = await zip.generateAsync({
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 9 },
       });
+
+      downloadBlob(blob, finalName);
     } catch (error) {
       throw new DocxGenerationError('Failed to save DOCX file.', error);
     }
   }
 
   /**
-   * Returns the generated DOCX as a Buffer (Node.js).
+   * Generates a Blob (browser).
    */
-  public async generateDocxBuffer(): Promise<Buffer> {
+  public async generateDocxBlob(): Promise<Blob> {
     this.resetState();
     try {
       const zip = new JSZip();
-      const resolved = await resolveAssetsNode(this.definition);
+      const resolved = await resolveAssetsWeb(this.definition);
       await this.generateZipContent(zip, resolved);
 
       return zip.generateAsync({
-        type: 'nodebuffer',
+        type: 'blob',
         compression: 'DEFLATE',
         compressionOptions: { level: 9 },
       });
     } catch (error) {
-      throw new DocxGenerationError('Failed to generate DOCX buffer.', error);
+      throw new DocxGenerationError('Failed to generate DOCX blob.', error);
     }
   }
 
   /**
-   * Generates all content for the DOCX zip file.
-   *
-   * Includes:
-   * - header1.xml/footer1.xml (optional)
-   * - document.xml referencing them via sectPr
-   * - [Content_Types].xml with overrides
-   * - document.xml.rels with hyperlink/image/header/footer rels
+   * Same zip generation logic as Node, including header/footer.
    */
   private async generateZipContent(zip: JSZip, def: DocxDefinition): Promise<void> {
-    // 1) Optional header/footer parts
     let headerRelId: string | undefined;
     let footerRelId: string | undefined;
 
@@ -124,21 +126,17 @@ export class DocxGenerator {
       footerRelId = this.relManager.addFooter('footer1.xml');
     }
 
-    // 2) Main document.xml with references
     const documentXml = generateDocumentXml(def, this.relManager, this.imageManager, {
       headerRelId,
       footerRelId,
     });
 
-    // 3) Content types, package rels, document
     zip.file('[Content_Types].xml', generateContentTypesXml({ hasHeader, hasFooter }));
     zip.folder('_rels')?.file('.rels', RelationshipsManager.generateMainRelsXml());
     zip.folder('word')?.file('document.xml', documentXml);
 
-    // 4) Images
     this.imageManager.saveImagesToZip(zip);
 
-    // 5) Document relationships
     if (this.relManager.hasRelationships()) {
       const relsXml = this.relManager.generateDocumentRelsXml();
       zip.folder('word')?.folder('_rels')?.file('document.xml.rels', relsXml);
@@ -146,10 +144,10 @@ export class DocxGenerator {
   }
 
   /**
-   * Static method to generate DOCX as Buffer from definition.
+   * Static helper for browser: returns Blob.
    */
-  public static async toBuffer(definition: DocxDefinition): Promise<Buffer> {
+  public static async toBlob(definition: DocxDefinition): Promise<Blob> {
     const generator = new DocxGenerator(definition);
-    return generator.generateDocxBuffer();
+    return generator.generateDocxBlob();
   }
 }
