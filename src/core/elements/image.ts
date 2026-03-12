@@ -101,13 +101,13 @@ export function createImage(
       }
     }
 
-    // si viene en string y no trae mime, detecta por magic number por si acaso
+    
     extension = extension || detectExt(bytes);
   } else if (image.image && typeof image.image === "object" && "path" in (image.image as any)) {
-    // ⚠️ No debería llegar aquí si resolveAssets corrió antes
+   
     throw new Error('Image with { path } must be resolved before createImage()');
   } else if (image.image && typeof image.image === "object" && "url" in (image.image as any)) {
-    // ⚠️ tampoco debería llegar aquí si resolveAssetsWeb corrió (url -> bytes)
+    
     throw new Error('Image with { url } must be resolved before createImage()');
   } else {
     const u8 = toUint8Array(image.image);
