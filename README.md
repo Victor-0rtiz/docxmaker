@@ -15,7 +15,7 @@ with automatic relationship management.
 - 📋 **Lists Support** — Create ordered and unordered lists without `numbering.xml`.
 - 🔢 **Dynamic Fields** — Built-in support for Word fields like `PAGE` and `NUMPAGES`.
 - 🧩 **Unified JSON Definition** — Same document structure works in Node.js and the browser.
-- 🧱 **Stable XML Engine** — Pinned to `xmlbuilder2@3.1.1` for reliable browser bundling.
+- 🧱 **XML Engine Updated** — Uses `xmlbuilder2@4.x` with browser-compatible output.
 - 🛠 Internal refactors and documentation improvements.
 
 ---
@@ -66,8 +66,8 @@ const doc = {
 
 await new DocxGenerator(doc).save('output.docx');
 
-// Or generate directly as Buffer
-const buffer = await DocxGenerator.toBuffer(doc);
+// Or generate directly as bytes
+const bytes = await DocxGenerator.toBuffer(doc);
 ```
 
 ---
@@ -91,6 +91,9 @@ const doc = {
 // Triggers a file download
 await new DocxGenerator(doc).save('browser-doc.docx');
 ```
+
+`docxmaker` resolves automatically to browser runtime code in modern bundlers.
+If you want to force browser-only entrypoints, you can still use `docxmaker/browser`.
 
 ---
 
@@ -248,15 +251,21 @@ Creates a generator instance from a structured JSON definition.
 
 ---
 
-### `generateDocxBuffer(): Promise<Buffer>`
+### `generateDocxBuffer(): Promise<Uint8Array>`
 
-Node.js only — returns the DOCX as a `Buffer`.
+Returns the DOCX as bytes (`Uint8Array`) in both Node.js and browser runtimes.
 
 ---
 
-### `DocxGenerator.toBuffer(definition): Promise<Buffer>`
+### `generateDocxBlob(): Promise<Blob>`
 
-Static shortcut for Node.js buffer generation.
+Returns the DOCX as a `Blob` in both Node.js and browser runtimes.
+
+---
+
+### `DocxGenerator.toBuffer(definition): Promise<Uint8Array>`
+
+Static shortcut to generate bytes (`Uint8Array`) in both runtimes.
 
 ---
 
@@ -299,7 +308,7 @@ Inspired by the simplicity of [pdfmake](https://www.npmjs.com/package/pdfmake).
 
 ## ⚙️ Dependencies
 
-* **xmlbuilder2** — XML generation (pinned to `3.1.1` for browser stability)
+* **xmlbuilder2** — XML generation (`4.0.3`)
 * **jszip** — DOCX packaging engine
 
 ---

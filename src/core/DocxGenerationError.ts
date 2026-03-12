@@ -1,5 +1,3 @@
-import util from "node:util";
-
 /**
  * Custom error class for DOCX generation failures.
  * 
@@ -44,8 +42,29 @@ export class DocxGenerationError extends Error {
    * @returns {string} Formatted multi-line error description
    */
   override toString(): string {
-    const red = (text: string) => `\x1b[31m${text}\x1b[0m`;
-    const gray = (text: string) => `\x1b[90m${text}\x1b[0m`;
+    const useColor =
+      typeof process !== "undefined" &&
+      !!process.stdout &&
+      !!process.stdout.isTTY;
+
+    const red = (text: string) => (useColor ? `\x1b[31m${text}\x1b[0m` : text);
+    const gray = (text: string) => (useColor ? `\x1b[90m${text}\x1b[0m` : text);
+
+    const inspectUnknown = (value: unknown): string => {
+      if (value == null) return String(value);
+      if (typeof value === "string") return value;
+      if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") {
+        return String(value);
+      }
+      if (typeof value === "symbol") return value.toString();
+      if (typeof value === "function") return `[Function ${(value as Function).name || "anonymous"}]`;
+
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return String(value);
+      }
+    };
 
     let output = `\n${red("DOCX Generation Error")}\n`;
     output += `→ ${this.message}\n`;
@@ -64,11 +83,7 @@ export class DocxGenerationError extends Error {
         );
       }
     } else if (this.originalError) {
-      output += gray(
-        "└─ Caused by: " +
-          util.inspect(this.originalError, { depth: 1, colors: true }) +
-          "\n"
-      );
+      output += gray(`└─ Caused by: ${inspectUnknown(this.originalError)}\n`);
     }
 
     return output;

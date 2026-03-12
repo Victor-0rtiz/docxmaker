@@ -153,7 +153,7 @@ export interface TableElement {
  * Image input supported by docxmaker (Node + Browser).
  *
  * ✅ Node.js:
- * - Buffer
+ * - Uint8Array (Buffer is supported because it extends Uint8Array)
  * - base64 string / data URI string
  * - { path: string } (resolved via fs/promises)
  *
@@ -168,7 +168,6 @@ export interface TableElement {
  * - `{ url }` is Browser-friendly; in Node you can still fetch manually and pass Buffer if you want.
  */
 export type ImageInput =
-  | Buffer
   | string
   | Uint8Array
   | ArrayBuffer

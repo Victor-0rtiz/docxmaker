@@ -1,12 +1,20 @@
 {
   "name": "docxmaker",
-  "version": "0.0.5",
-  "description": "A lightweight library to generate DOCX documents from JSON definitions.",
+  "version": "0.1.0",
+  "description": "Lightweight DOCX generator for Node.js and browser apps using JSON definitions.",
   "author": "oss-dev",
   "license": "MIT",
   "keywords": [
     "docx",
     "docx generator",
+    "document generator",
+    "json to docx",
+    "word",
+    "office",
+    "ooxml",
+    "browser",
+    "frontend",
+    "nodejs",
     "typescript"
   ],
   "repository": {
@@ -19,16 +27,22 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "browser": "./dist/browser/index.browser.js",
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.cjs"
+    },
+    "./browser": {
+      "types": "./dist/browser/index.browser.d.ts",
+      "import": "./dist/browser/index.browser.js"
     }
   },
   "scripts": {
     "build:node": "tsup src/index.ts --format esm,cjs --dts --out-dir dist --platform=node --target=node18",
     "build:web": "tsup src/index.browser.ts --format esm --dts --out-dir dist/browser --platform=browser --target=es2020 --no-splitting",
-    "build": "npm run build:node && npm run build:web"
+    "build": "npm run build:node && npm run build:web",
+    "test:smoke": "node scripts/smoke-cross-runtime.mjs",
+    "verify": "npm run build && npm run test:smoke"
   },
   "peerDependencies": {
     "jszip": "^3.10.1",

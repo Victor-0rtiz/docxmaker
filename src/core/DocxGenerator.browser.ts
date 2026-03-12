@@ -132,6 +132,17 @@ export class DocxGenerator {
   }
 
   /**
+   * Generates a DOCX as bytes (browser).
+   *
+   * @returns {Promise<Uint8Array>} Binary content of the `.docx` package.
+   * @throws {DocxGenerationError} When asset resolution or ZIP creation fails.
+   */
+  public async generateDocxBuffer(): Promise<Uint8Array> {
+    const blob = await this.generateDocxBlob();
+    return new Uint8Array(await blob.arrayBuffer());
+  }
+
+  /**
    * Same zip generation logic as Node, including optional header/footer parts.
    *
    * @private
@@ -184,5 +195,16 @@ export class DocxGenerator {
   public static async toBlob(definition: DocxDefinition): Promise<Blob> {
     const generator = new DocxGenerator(definition);
     return generator.generateDocxBlob();
+  }
+
+  /**
+   * Static helper that returns raw bytes in browser runtimes.
+   *
+   * @param {DocxDefinition} definition Document definition to render.
+   * @returns {Promise<Uint8Array>} Bytes containing the generated file.
+   */
+  public static async toBuffer(definition: DocxDefinition): Promise<Uint8Array> {
+    const generator = new DocxGenerator(definition);
+    return generator.generateDocxBuffer();
   }
 }

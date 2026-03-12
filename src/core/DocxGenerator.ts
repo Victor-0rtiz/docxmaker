@@ -112,25 +112,45 @@ export class DocxGenerator {
   }
 
   /**
-   * Returns the generated DOCX as a Node.js Buffer.
+   * Returns the generated DOCX as bytes.
    *
-    * @returns {Promise<Buffer>} Complete `.docx` payload in memory.
+    * @returns {Promise<Uint8Array>} Complete `.docx` payload in memory.
    * @throws {DocxGenerationError} When asset resolution or ZIP generation fails.
    */
-  public async generateDocxBuffer(): Promise<Buffer> {
+  public async generateDocxBuffer(): Promise<Uint8Array> {
     this.resetState();
     try {
       const zip = new JSZip();
       const resolved = await resolveAssetsNode(this.definition);
       await this.generateZipContent(zip, resolved);
 
-      return zip.generateAsync({
+      const bytes = await zip.generateAsync({
         type: 'nodebuffer',
         compression: 'DEFLATE',
         compressionOptions: { level: 9 },
       });
+
+      return new Uint8Array(bytes);
     } catch (error) {
       throw new DocxGenerationError('Failed to generate DOCX buffer.', error);
+    }
+  }
+
+  /**
+   * Returns the generated DOCX as a Blob.
+   *
+   * @returns {Promise<Blob>} Blob containing the `.docx` package.
+   * @throws {DocxGenerationError} When asset resolution or ZIP generation fails.
+   */
+  public async generateDocxBlob(): Promise<Blob> {
+    try {
+      const bytes = await this.generateDocxBuffer();
+      const blobPart = bytes as unknown as BlobPart;
+      return new Blob([blobPart], {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+    } catch (error) {
+      throw new DocxGenerationError('Failed to generate DOCX blob.', error);
     }
   }
 
@@ -193,11 +213,22 @@ export class DocxGenerator {
    * Static convenience helper to generate a DOCX buffer from a definition.
    *
     * @param {DocxDefinition} definition Document definition to render.
-    * @returns {Promise<Buffer>} Buffer with the generated document.
+    * @returns {Promise<Uint8Array>} Bytes with the generated document.
    * @throws {DocxGenerationError} When the underlying generation fails.
    */
-  public static async toBuffer(definition: DocxDefinition): Promise<Buffer> {
+  public static async toBuffer(definition: DocxDefinition): Promise<Uint8Array> {
     const generator = new DocxGenerator(definition);
     return generator.generateDocxBuffer();
+  }
+
+  /**
+   * Static convenience helper to generate a DOCX blob from a definition.
+   *
+   * @param {DocxDefinition} definition Document definition to render.
+   * @returns {Promise<Blob>} Blob with the generated document.
+   */
+  public static async toBlob(definition: DocxDefinition): Promise<Blob> {
+    const generator = new DocxGenerator(definition);
+    return generator.generateDocxBlob();
   }
 }
