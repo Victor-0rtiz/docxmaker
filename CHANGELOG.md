@@ -8,6 +8,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.1.0] - 2026-03-12
+
+### Added
+- 🧪 **Cross-runtime smoke verification**:
+  - Added `npm run test:smoke` to validate Node.js and browser outputs from built artifacts.
+  - Added `npm run verify` as a release-ready check (`build` + `test:smoke`).
+- 🧩 **Unified runtime API**:
+  - Added `generateDocxBlob()` to the Node.js generator.
+  - Added `generateDocxBuffer()` and static `toBuffer()` to the browser generator.
+
+### Changed
+- 🌐 **Single-import experience**:
+  - Package usage now supports the same import path in Node.js and browser (`docxmaker`) with consistent typing.
+- 📦 **Type consistency across environments**:
+  - `toBuffer()` and `generateDocxBuffer()` now return `Uint8Array` in both runtimes.
+  - Public image input types now prefer `Uint8Array`/`ArrayBuffer` as cross-platform binary primitives.
+- 📝 **Documentation refresh**:
+  - Updated README examples and API reference for the unified import and unified method behavior.
+
+### Fixed
+- 🔒 **Browser compatibility hardening**:
+  - Removed Node-only dependency usage from shared `DocxGenerationError` formatting.
+  - Prevented accidental Node utility imports from leaking into browser bundles.
+
+---
+
 ## [0.0.5] - 2025-12-27
 
 ### Added

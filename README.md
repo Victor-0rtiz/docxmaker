@@ -1,5 +1,5 @@
 
-# docxmaker (v0.0.5)
+# docxmaker (v0.1.0)
 
 A powerful yet lightweight DOCX document generator for **Node.js and the Browser**,  
 using structured JSON definitions inspired by the simplicity of libraries like **pdfmake**.
@@ -9,14 +9,13 @@ with automatic relationship management.
 
 ---
 
-## ✨ What's New in v0.0.5
+## ✨ What's New in v0.1.0
 
-- 🌐 **Browser Support** — Generate and download DOCX files directly in the browser.
-- 📋 **Lists Support** — Create ordered and unordered lists without `numbering.xml`.
-- 🔢 **Dynamic Fields** — Built-in support for Word fields like `PAGE` and `NUMPAGES`.
-- 🧩 **Unified JSON Definition** — Same document structure works in Node.js and the browser.
-- 🧱 **XML Engine Updated** — Uses `xmlbuilder2@4.x` with browser-compatible output.
-- 🛠 Internal refactors and documentation improvements.
+- 🌐 **Single import for Node + Browser** — Use `import { DocxGenerator } from 'docxmaker'` in both environments.
+- 🧩 **Unified API surface** — `save`, `toBuffer`, and `toBlob` are available across runtimes.
+- 🔒 **Browser-safe error handling** — Removed Node-only dependency from shared error formatting.
+- 🧪 **Release smoke checks** — Added cross-runtime validation via `npm run verify`.
+- 📋 **Feature parity maintained** — Lists, fields, images, tables, headers, and footers continue to work with the same JSON definition.
 
 ---
 
@@ -24,7 +23,7 @@ with automatic relationship management.
 
 ```bash
 npm install docxmaker
-````
+```
 
 ---
 
@@ -173,7 +172,7 @@ If you want to force browser-only entrypoints, you can still use `docxmaker/brow
 
 | Environment | Input Type                        |
 | ----------- | --------------------------------- |
-| Node.js     | `Buffer`, `{ path }`, base64      |
+| Node.js     | `Uint8Array`/`Buffer`, `{ path }`, base64 |
 | Browser     | `Blob`, `File`, `{ url }`, base64 |
 | Both        | `Uint8Array`, `ArrayBuffer`       |
 
@@ -271,7 +270,7 @@ Static shortcut to generate bytes (`Uint8Array`) in both runtimes.
 
 ### `DocxGenerator.toBlob(definition): Promise<Blob>`
 
-Browser-only static helper.
+Static shortcut to generate a `Blob` in both runtimes.
 
 ---
 
