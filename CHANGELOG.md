@@ -19,14 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - 🧪 **Suite de pruebas** — 12 escenarios en Node.js más página interactiva de prueba en navegador.
 
 ### Changed
-- ⬆️ **Versión estable 1.0.0** — API madura y probada en Node.js y navegador.
+- ⬆️ **Versión estable 1.0.0** — API estable para los casos actualmente soportados y verificada en Node.js y navegador.
 - 🧼 **xmlbuilder2 ya no es peer dependency** — El browser build lo incluye internamente.
 - 🎨 **Estilos registrados** — Podés definir estilos reutilizables con `styles: [{ id: 'MiEstilo', style: {...} }]` y aplicarlos con `style: 'MiEstilo'`.
 - 🔗 **Hipervínculos en el mismo párrafo que texto plano** — Ahora podés mezclar links con texto normal en una sola línea.
 
 ### Fixed
 - 🐛 **Documentos abriéndose correctamente en Word** — Se corrigió el valor inválido `w:vAlign="middle"` (debe ser `"center"`) y el orden de los elementos `<w:sectPr>` y `<w:tblPr>` que Word exige estrictamente.
-- 🚫 **Ya no se generan etiquetas vacías** — Se eliminó la creación de `<w:rPr/>` sin contenido que Word rechazaba.
+- 🧼 **XML más limpio** — Se evitó generar `<w:rPr/>` cuando no existen propiedades de texto, reduciendo marcado innecesario.
 
 ---
 

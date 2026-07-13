@@ -113,6 +113,29 @@ The file is available at `dist/browser/index.browser.js` after install or build.
 
 ## 📘 JSON Structure
 
+### Global Definition
+
+```ts
+{
+  styles: [
+    { id: 'Heading1', style: { bold: true, fontSize: 24, color: '333333' } },
+    { id: 'BodyText', style: { fontSize: 11, color: '666666' } }
+  ],
+  header: { ... },
+  footer: { ... },
+  page: { size: 'A4', orientation: 'portrait', margins: { top: 1440, right: 1440, bottom: 1440, left: 1440 } },
+  content: [ ... ]
+}
+```
+
+Define reusable styles under the `styles` array and reference them by `id` in paragraphs:
+
+```ts
+{ type: 'paragraph', style: 'Heading1', content: ['Title'] }
+```
+
+Inline styles override global ones when both are present.
+
 ### Supported Content Types
 
 ### 1. **Text**
@@ -131,7 +154,13 @@ The file is available at `dist/browser/index.browser.js` after install or build.
 
 ### 2. **Paragraph**
 
+Supports both registered style ids and inline styles:
+
 ```ts
+// Using a registered style id
+{ type: 'paragraph', style: 'Heading1', content: ['Title'] }
+
+// Using inline styles (overrides any registered style)
 {
   type: 'paragraph',
   content: [
@@ -229,7 +258,7 @@ Useful for page numbering in headers and footers.
 
 ### 7. **Lists**
 
-Simple list rendering without `numbering.xml`.
+Lists use Word's native numbering system through `numbering.xml` and `<w:numPr>`.
 
 ```ts
 {
@@ -323,7 +352,7 @@ Inspired by the simplicity of [pdfmake](https://www.npmjs.com/package/pdfmake).
 ## ⚙️ Dependencies
 
 * **jszip** — DOCX packaging engine
-* **xmlbuilder2** — XML generation (Node.js only; bundled with polyfills for browser)
+* **xmlbuilder2** — OOXML generation engine, bundled into the standalone browser build.
 
 ---
 

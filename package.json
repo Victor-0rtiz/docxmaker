@@ -1,6 +1,6 @@
 {
   "name": "docxmaker",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Lightweight DOCX generator for Node.js and browser apps using JSON definitions.",
   "author": "oss-dev",
   "license": "MIT",
