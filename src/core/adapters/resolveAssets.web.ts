@@ -1,18 +1,10 @@
+import { deepClone } from '../../utils/clone.js';
 import type { DocxDefinition } from '../types/types.js';
 
-/**
- * Normalizes various browser binary inputs (Blob/File/ArrayBuffer/TypedArray)
- * into a Uint8Array so the downstream XML generators can treat all images
- * uniformly.
- *
- * @param {any} input Potential binary-like value supplied by consumers.
- * @returns {Promise<Uint8Array | null>} Uint8Array when conversion succeeds, otherwise null.
- */
 async function toUint8Array(input: any): Promise<Uint8Array | null> {
   if (input instanceof Uint8Array) return input;
   if (input instanceof ArrayBuffer) return new Uint8Array(input);
 
-  // Blob / File
   if (typeof Blob !== 'undefined' && input instanceof Blob) {
     return new Uint8Array(await input.arrayBuffer());
   }
@@ -20,22 +12,8 @@ async function toUint8Array(input: any): Promise<Uint8Array | null> {
   return null;
 }
 
-/**
- * Resolves browser-friendly assets before XML generation.
- *
- * - Clones the definition to keep the public object immutable.
- * - Fetches `{ image: { url } }` and stores them as Uint8Array.
- * - Converts Blob/File/ArrayBuffer/TypedArray inputs with `toUint8Array`.
- * - Recursively visits paragraphs, tables, headers, and footers.
- *
- * @param {DocxDefinition} def Original definition with potential remote or structured assets.
- * @returns {Promise<DocxDefinition>} Definition where every image is a Uint8Array or base64 string.
- */
 export async function resolveAssetsWeb(def: DocxDefinition): Promise<DocxDefinition> {
-  const clone: DocxDefinition =
-    typeof structuredClone === 'function'
-      ? structuredClone(def)
-      : JSON.parse(JSON.stringify(def));
+  const clone = deepClone(def);
 
   const processItem = async (item: any): Promise<any> => {
     if (typeof item === 'string') return item;
@@ -43,7 +21,6 @@ export async function resolveAssetsWeb(def: DocxDefinition): Promise<DocxDefinit
     if (item?.type === 'image') {
       const img = item.image;
 
-      // { url } -> fetch -> Uint8Array
       if (img && typeof img === 'object' && 'url' in img && typeof img.url === 'string') {
         const res = await fetch(img.url, { mode: 'cors' });
         if (!res.ok) throw new Error(`Failed to fetch image: ${img.url}`);
@@ -51,11 +28,9 @@ export async function resolveAssetsWeb(def: DocxDefinition): Promise<DocxDefinit
         return { ...item, image: u8 };
       }
 
-      // Blob/File/ArrayBuffer/Uint8Array -> Uint8Array
       const u8 = await toUint8Array(img);
       if (u8) return { ...item, image: u8 };
 
-      // base64 stays as string
       return item;
     }
 

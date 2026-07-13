@@ -85,6 +85,20 @@ export class RelationshipsManager {
     }
 
     /**
+     * Adds a numbering relationship
+     * @returns {string} Relationship ID
+     */
+    addNumbering(): string {
+        const relId = this.getNextRelId();
+        this.relationships.push({
+            id: relId,
+            type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering',
+            target: 'numbering.xml'
+        });
+        return relId;
+    }
+
+    /**
      * Generates the next sequential relationship ID
      * @private
      * @returns {string} Next relationship ID in format "rId{N}"

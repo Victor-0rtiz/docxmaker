@@ -5,36 +5,23 @@ import { createImage } from './image.js';
 import { createField } from './field.js';
 
 /**
- * Creates a simple list by generating one paragraph per item.
- * Does NOT use numbering.xml (keeps the package minimal).
- *
- * @param {object} parent - Parent XML element (root/body, header, footer)
- * @param {ListElement} list - List definition
- * @param {function} getHyperlinkRelId - Callback to register hyperlinks
- * @param {function} registerImage - Callback to register images
- * @param {function} getImageRelId - Callback to get image relationship Id
- *
- * @example
- * {
- *   type:'list',
- *   variant:'ordered',
- *   items: [
- *     ['First item ', { type:'field', field:'PAGE' }],
- *     ['Second item']
- *   ]
- * }
+ * Creates a proper Word list using numbering.xml.
+
+ * @param parent - Parent XML element (root/body, header, footer)
+ * @param list - List definition
+ * @param numId - Numbering ID from NumberingManager
+ * @param getHyperlinkRelId - Callback to register hyperlinks
+ * @param registerImage - Callback to register images
+ * @param getImageRelId - Callback to get image relationship Id
  */
 export function createList(
   parent: any,
   list: ListElement,
+  numId: number,
   getHyperlinkRelId: (url: string) => string,
   registerImage: (data: Uint8Array, extension: string) => string,
   getImageRelId: (filename: string) => string
 ) {
-  const variant = list.variant ?? 'unordered';
-  const indentTwips = list.style?.indentTwips ?? 720;
-  const hangingTwips = list.style?.hangingTwips ?? 360;
-
   const renderItemContent = (p: any, parts: ParagraphContent[]) => {
     for (const part of parts) {
       if (typeof part === 'string' || part.type === 'text') {
@@ -50,23 +37,14 @@ export function createList(
     }
   };
 
-  list.items.forEach((itemParts, idx) => {
+  for (const itemParts of list.items) {
     const p = parent.ele('w:p');
 
-    // Paragraph properties for indent/hanging
     const pPr = p.ele('w:pPr');
-    pPr.ele('w:ind', {
-      'w:left': indentTwips.toString(),
-      'w:hanging': hangingTwips.toString(),
-    });
+    const numPr = pPr.ele('w:numPr');
+    numPr.ele('w:ilvl', { 'w:val': '0' });
+    numPr.ele('w:numId', { 'w:val': numId.toString() });
 
-    // Prefix: bullet or number
-    const prefix = variant === 'ordered' ? `${idx + 1}. ` : '• ';
-
-    // Prefix as text (inherits list.style)
-    createText(p, prefix, list.style);
-
-    // Item content
     renderItemContent(p, itemParts);
-  });
+  }
 }

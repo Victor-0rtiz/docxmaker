@@ -1,22 +1,9 @@
 import { readFile } from 'node:fs/promises';
+import { deepClone } from '../../utils/clone.js';
 import type { DocxDefinition } from '../types/types.js';
 
-/**
- * Deeply resolves file-system backed assets for Node.js environments.
- *
- * - Clones the provided definition to avoid mutating caller data.
- * - Converts every `{ image: { path } }` into a Uint8Array read via fs/promises.
- * - Leaves Buffers/base64 strings untouched.
- * - Recursively traverses paragraphs, tables, headers, and footers.
- *
- * @param {DocxDefinition} def Original document definition supplied by the consumer.
- * @returns {Promise<DocxDefinition>} New definition where all file-based images are binary blobs.
- */
 export async function resolveAssetsNode(def: DocxDefinition): Promise<DocxDefinition> {
-  const clone: DocxDefinition =
-    typeof structuredClone === 'function'
-      ? structuredClone(def)
-      : JSON.parse(JSON.stringify(def));
+  const clone = deepClone(def);
 
   const processItem = async (item: any): Promise<any> => {
     if (typeof item === 'string') return item;
@@ -24,13 +11,11 @@ export async function resolveAssetsNode(def: DocxDefinition): Promise<DocxDefini
     if (item?.type === 'image') {
       const img = item.image;
 
-      // { path } -> Buffer
       if (img && typeof img === 'object' && 'path' in img && typeof img.path === 'string') {
         const data = await readFile(img.path);
         return { ...item, image: new Uint8Array(data) };
       }
 
-      // Buffer/base64 stays as-is
       return item;
     }
 

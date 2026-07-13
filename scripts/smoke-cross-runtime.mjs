@@ -8,7 +8,6 @@ import { DocxGenerator as NodeDocxGenerator } from "../dist/index.js";
 import { DocxGenerator as BrowserDocxGenerator } from "../dist/browser/index.browser.js";
 
 function assertDocxSignature(bytes) {
-  // DOCX is a ZIP package and should begin with PK\x03\x04.
   assert.equal(bytes[0], 0x50, "Invalid DOCX signature byte 1");
   assert.equal(bytes[1], 0x4b, "Invalid DOCX signature byte 2");
   assert.equal(bytes[2], 0x03, "Invalid DOCX signature byte 3");
@@ -26,6 +25,24 @@ async function run() {
         content: [
           "Visit ",
           { type: "link", text: "example", url: "https://example.com" }
+        ]
+      },
+      {
+        type: "list",
+        variant: "unordered",
+        items: [
+          ["First unordered item"],
+          ["Second ", { type: "link", text: "with link", url: "https://example.com" }],
+          ["Third item"]
+        ]
+      },
+      {
+        type: "list",
+        variant: "ordered",
+        items: [
+          ["First ordered item"],
+          ["Second ordered item"],
+          ["Third ", { type: "field", field: "PAGE" }]
         ]
       }
     ]
