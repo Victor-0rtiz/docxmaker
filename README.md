@@ -11,13 +11,11 @@ with automatic relationship management.
 
 ## ✨ What's New in v1.0.0
 
-- 🌐 **Self-contained browser build** — `docxmaker.browser.js` bundles everything (JSZip + xmlbuilder2)  
-  with Node polyfills. No importmaps, CDNs, or external scripts needed.
-- 📦 **Minified bundle** — `--minify` reduces browser size from 947 KB → **428 KB**.
-- 🧪 **Comprehensive tests** — 12 Node.js scenarios + interactive browser test page.
-- 🐛 **Critical bug fixes** — `w:vAlign="middle"` → `"center"`, sectPr child ordering,  
-  tblPr child ordering, empty `<w:rPr/>` prevention, and TypeScript type narrowing.
-- 🔧 **Zero-install browser usage** — Just drop `docxmaker.browser.js` in a `<script type="module">` tag and use it.
+- 🧩 **Table colspan & rowspan** — Merge cells horizontally and vertically.
+- 📋 **Real numbered & bulleted lists** — Uses Word's native numbering system (`<w:numPr>`), not fake bullets.
+- 🔢 **`PAGE` and `NUMPAGES` fields** — Page numbering in headers and footers.
+- 📐 **Page configuration** — Size (A4, Letter...), orientation (portrait/landscape), and custom margins.
+- 🎨 **Reusable styles** — Define styles by `id` and apply them with `style: 'myId'`.
 
 ---
 
