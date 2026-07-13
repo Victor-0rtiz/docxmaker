@@ -1,5 +1,5 @@
 
-# docxmaker (v0.1.0)
+# docxmaker (v1.0.0)
 
 A powerful yet lightweight DOCX document generator for **Node.js and the Browser**,  
 using structured JSON definitions inspired by the simplicity of libraries like **pdfmake**.
@@ -9,13 +9,15 @@ with automatic relationship management.
 
 ---
 
-## ✨ What's New in v0.1.0
+## ✨ What's New in v1.0.0
 
-- 🌐 **Single import for Node + Browser** — Use `import { DocxGenerator } from 'docxmaker'` in both environments.
-- 🧩 **Unified API surface** — `save`, `toBuffer`, and `toBlob` are available across runtimes.
-- 🔒 **Browser-safe error handling** — Removed Node-only dependency from shared error formatting.
-- 🧪 **Release smoke checks** — Added cross-runtime validation via `npm run verify`.
-- 📋 **Feature parity maintained** — Lists, fields, images, tables, headers, and footers continue to work with the same JSON definition.
+- 🌐 **Self-contained browser build** — `docxmaker.browser.js` bundles everything (JSZip + xmlbuilder2)  
+  with Node polyfills. No importmaps, CDNs, or external scripts needed.
+- 📦 **Minified bundle** — `--minify` reduces browser size from 947 KB → **428 KB**.
+- 🧪 **Comprehensive tests** — 12 Node.js scenarios + interactive browser test page.
+- 🐛 **Critical bug fixes** — `w:vAlign="middle"` → `"center"`, sectPr child ordering,  
+  tblPr child ordering, empty `<w:rPr/>` prevention, and TypeScript type narrowing.
+- 🔧 **Zero-install browser usage** — Just drop `docxmaker.browser.js` in a `<script type="module">` tag and use it.
 
 ---
 
@@ -93,6 +95,21 @@ await new DocxGenerator(doc).save('browser-doc.docx');
 
 `docxmaker` resolves automatically to browser runtime code in modern bundlers.
 If you want to force browser-only entrypoints, you can still use `docxmaker/browser`.
+
+### Direct browser usage (no bundler)
+
+Drop the pre-built browser bundle in your HTML:
+
+```html
+<script type="module">
+  import { DocxGenerator } from './docxmaker.browser.js';
+  const doc = new DocxGenerator({ content: ['Hello!'] });
+  const blob = await doc.generateDocxBlob();
+  // download or upload...
+</script>
+```
+
+The file is available at `dist/browser/index.browser.js` after install or build.
 
 ---
 
@@ -307,8 +324,8 @@ Inspired by the simplicity of [pdfmake](https://www.npmjs.com/package/pdfmake).
 
 ## ⚙️ Dependencies
 
-* **xmlbuilder2** — XML generation (`4.0.3`)
 * **jszip** — DOCX packaging engine
+* **xmlbuilder2** — XML generation (Node.js only; bundled with polyfills for browser)
 
 ---
 

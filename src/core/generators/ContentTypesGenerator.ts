@@ -2,8 +2,9 @@ export function generateContentTypesXml(opts?: {
   hasHeader?: boolean;
   hasFooter?: boolean;
   hasNumbering?: boolean;
+  hasStyles?: boolean;
 }): string {
-  const { hasHeader, hasFooter, hasNumbering } = opts ?? {};
+  const { hasHeader, hasFooter, hasNumbering, hasStyles } = opts ?? {};
 
   const lines: string[] = [];
   lines.push(`<?xml version="1.0" encoding="UTF-8"?>`);
@@ -26,6 +27,9 @@ export function generateContentTypesXml(opts?: {
   }
   if (hasNumbering) {
     lines.push(`  <Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>`);
+  }
+  if (hasStyles) {
+    lines.push(`  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>`);
   }
 
   lines.push(`</Types>`);

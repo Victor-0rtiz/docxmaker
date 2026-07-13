@@ -3,7 +3,8 @@ import JSZip from 'jszip';
 import { RelationshipsManager } from './generators/RelationshipsGenerator.js';
 import { ImageManager } from './generators/ImageManager.js';
 import { NumberingManager } from './generators/NumberingManager.js';
-import type { DocxDefinition } from './types/types.js';
+import { StylesManager } from './generators/StylesManager.js';
+import type { DocxDefinition, StyleText } from './types/types.js';
 import { generateDocumentXml } from './generators/DocumentXmlGenerator.js';
 import { generateContentTypesXml } from './generators/ContentTypesGenerator.js';
 import { DocxGenerationError } from './DocxGenerationError.js';
@@ -40,6 +41,7 @@ export class DocxGenerator {
   private relManager: RelationshipsManager;
   private imageManager: ImageManager;
   private numberingManager: NumberingManager;
+  private stylesManager: StylesManager;
 
   constructor(private definition: DocxDefinition) {
     if (!definition || !Array.isArray(definition.content)) {
@@ -48,17 +50,33 @@ export class DocxGenerator {
     this.relManager = new RelationshipsManager();
     this.imageManager = new ImageManager();
     this.numberingManager = new NumberingManager();
+    this.stylesManager = new StylesManager();
   }
 
   private resetState(): void {
     this.relManager.reset();
     this.imageManager.reset();
     this.numberingManager.reset();
+    this.stylesManager.reset();
   }
+
+  private loadStyles(): void {
+    const styles = this.definition.styles;
+    if (styles) {
+      for (const style of styles) {
+        this.stylesManager.addStyle(style);
+      }
+    }
+  }
+
+  private getStyleCallback = (id: string): StyleText | undefined => {
+    return this.stylesManager.getStyle(id)?.style;
+  };
 
   public async save(filename: string): Promise<void> {
     this.resetState();
     try {
+      this.loadStyles();
       const finalName = ensureDocxName(filename);
 
       const zip = new JSZip();
@@ -80,6 +98,7 @@ export class DocxGenerator {
   public async generateDocxBlob(): Promise<Blob> {
     this.resetState();
     try {
+      this.loadStyles();
       const zip = new JSZip();
       const resolved = await resolveAssetsWeb(this.definition);
       await this.generateZipContent(zip, resolved);
@@ -102,36 +121,48 @@ export class DocxGenerator {
   private async generateZipContent(zip: JSZip, def: DocxDefinition): Promise<void> {
     let headerRelId: string | undefined;
     let footerRelId: string | undefined;
+    let headerXml: string | undefined;
+    let footerXml: string | undefined;
 
     const hasHeader = !!def.header?.content?.length;
     const hasFooter = !!def.footer?.content?.length;
 
+    // Generate all XML strings first (header/footer need to register relIds before document)
     if (hasHeader && def.header) {
-      const headerXml = generateHeaderXml(def.header, this.relManager, this.imageManager, this.numberingManager);
-      zip.folder('word')?.file('header1.xml', headerXml);
+      headerXml = generateHeaderXml(def.header, this.relManager, this.imageManager, this.numberingManager, this.getStyleCallback);
       headerRelId = this.relManager.addHeader('header1.xml');
     }
 
     if (hasFooter && def.footer) {
-      const footerXml = generateFooterXml(def.footer, this.relManager, this.imageManager, this.numberingManager);
-      zip.folder('word')?.file('footer1.xml', footerXml);
+      footerXml = generateFooterXml(def.footer, this.relManager, this.imageManager, this.numberingManager, this.getStyleCallback);
       footerRelId = this.relManager.addFooter('footer1.xml');
     }
 
-    const documentXml = generateDocumentXml(def, this.relManager, this.imageManager, this.numberingManager, {
+    const documentXml = generateDocumentXml(def, this.relManager, this.imageManager, this.numberingManager, this.stylesManager, {
       headerRelId,
       footerRelId,
     });
 
     const hasNumbering = this.numberingManager.hasDefinitions();
+    const hasStyles = this.stylesManager.hasStyles();
 
-    zip.file('[Content_Types].xml', generateContentTypesXml({ hasHeader, hasFooter, hasNumbering }));
+    // [Content_Types].xml MUST be the first entry per OPC spec
+    zip.file('[Content_Types].xml', generateContentTypesXml({ hasHeader, hasFooter, hasNumbering, hasStyles }));
     zip.folder('_rels')?.file('.rels', RelationshipsManager.generateMainRelsXml());
-    zip.folder('word')?.file('document.xml', documentXml);
+
+    const wordFolder = zip.folder('word');
+    if (headerXml) wordFolder?.file('header1.xml', headerXml);
+    if (footerXml) wordFolder?.file('footer1.xml', footerXml);
+    wordFolder?.file('document.xml', documentXml);
 
     if (hasNumbering) {
       this.relManager.addNumbering();
       zip.folder('word')?.file('numbering.xml', this.numberingManager.generateXml());
+    }
+
+    if (hasStyles) {
+      this.relManager.addStyles();
+      zip.folder('word')?.file('styles.xml', this.stylesManager.generateXml());
     }
 
     this.imageManager.saveImagesToZip(zip);

@@ -67,28 +67,31 @@ export function createText(p: any, input: string | TextElement, defaultStyle?: S
   // --- STYLING APPLICATION ---
   // Create run properties if styling is needed
   if (style) {
-    const rPr = run.ele('w:rPr');
-    
-    // Text color (hex value without #)
-    if (style.color) 
-      rPr.ele('w:color', { 'w:val': style.color });
-    
-    // Bold formatting
-    if (style.bold) 
-      rPr.ele('w:b');
-    
-    // Italic formatting
-    if (style.italic) 
-      rPr.ele('w:i');
-    
-    // Underline (single line)
-    if (style.underline) 
-      rPr.ele('w:u', { 'w:val': 'single' });
-    
-    // Font size conversion (points → half-points)
-    if (style.fontSize) {
-      const sizeVal = style.fontSize * 2;
-      rPr.ele('w:sz', { 'w:val': sizeVal });
+    const hasTextStyle = style.color || style.bold || style.italic || style.underline || style.fontSize;
+    if (hasTextStyle) {
+      const rPr = run.ele('w:rPr');
+      
+      // Text color (hex value without #)
+      if (style.color) 
+        rPr.ele('w:color', { 'w:val': style.color });
+      
+      // Bold formatting
+      if (style.bold) 
+        rPr.ele('w:b');
+      
+      // Italic formatting
+      if (style.italic) 
+        rPr.ele('w:i');
+      
+      // Underline (single line)
+      if (style.underline) 
+        rPr.ele('w:u', { 'w:val': 'single' });
+      
+      // Font size conversion (points → half-points)
+      if (style.fontSize) {
+        const sizeVal = style.fontSize * 2;
+        rPr.ele('w:sz', { 'w:val': sizeVal });
+      }
     }
   }
 

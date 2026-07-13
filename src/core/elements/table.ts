@@ -4,86 +4,6 @@ import { createlink } from "./link.js";
 import { createImage } from "./image.js";
 import { createField } from "./field.js";
 
-
-/**
- * Creates a WordprocessingML table element with rows, cells, and content
- * 
- * This function:
- * 1. Creates a `<w:tbl>` element with borders and properties
- * 2. Handles table-level styling (alignment, column widths, background)
- * 3. Processes rows and cells with individual styling
- * 4. Handles mixed content types within cells:
- *    - Plain text
- *    - Formatted text
- *    - Hyperlinks
- *    - Images
- * 5. Applies cell-level styling (width, background, alignment)
- * 
- * @param {object} parent - Parent XML element (from xmlbuilder2)
- * @param {TableElement} table - Table definition object
- * @param {function} getHyperlinkRelId - Callback to get relationship ID for hyperlinks
- * @param {function} registerImage - Callback to register images
- * @param {function} getImageRelId - Callback to get relationship ID for images
- * 
- * @example
- * // Basic table
- * createTable(root, {
- *   type: 'table',
- *   rows: [
- *     { cells: [{ content: ['Header'] }] },
- *     { cells: [{ content: ['Data'] }] }
- *   ],
- *   style: { columnWidths: [2000] }
- * }, getRelId, registerImage, getImageRelId);
- * 
- * @example
- * // Styled table with mixed content
- * createTable(root, {
- *   type: 'table',
- *   style: {
- *     backgroundColor: '#f0f0f0',
- *     verticalAlign: 'center',
- *     columnWidths: [3000, 4000]
- *   },
- *   rows: [
- *     {
- *       cells: [
- *         { 
- *           content: ['Name'], 
- *           style: { backgroundColor: '#e0e0e0', width: 3000 } 
- *         },
- *         { 
- *           content: ['Description'],
- *           style: { backgroundColor: '#e0e0e0', width: 4000 } 
- *         }
- *       ]
- *     },
- *     {
- *       cells: [
- *         { 
- *           content: ['Product A'],
- *           style: { align: 'center' }
- *         },
- *         { 
- *           content: [
- *             { 
- *               type: 'link', 
- *               text: 'Documentation', 
- *               url: 'https://example.com/docs' 
- *             },
- *             ' - ',
- *             { 
- *               type: 'image',
- *               image: fs.readFileSync('icon.png'),
- *               width: 20
- *             }
- *           ]
- *         }
- *       ]
- *     }
- *   ]
- * }, getRelId, registerImage, getImageRelId);
- */
 export function createTable(
     parent: any,
     table: TableElement,
@@ -91,123 +11,141 @@ export function createTable(
     registerImage: (data: Uint8Array, extension: string) => string,
     getImageRelId: (filename: string) => string
 ) {
-    // --- TABLE CREATION ---
-    // Create table root element
     const tbl = parent.ele('w:tbl');
 
-    // --- TABLE PROPERTIES ---
-    // Create table properties container
     const tblPr = tbl.ele('w:tblPr');
 
-    // Create table borders with default settings
-    const borders = tblPr.ele('w:tblBorders');
-    const borderSettings = {
-        'w:val': 'single',   // Border style
-        'w:sz': '4',         // Border size (1/8 point)
-        'w:space': '0',      // Border spacing
-        'w:color': 'auto'    // Automatic color
-    };
-
-    // Apply borders to all sides
-    borders.ele('w:top', borderSettings).up()
-        .ele('w:left', borderSettings).up()
-        .ele('w:bottom', borderSettings).up()
-        .ele('w:right', borderSettings).up()
-        .ele('w:insideH', borderSettings).up()   // Inside horizontal borders
-        .ele('w:insideV', borderSettings);        // Inside vertical borders
-
-    // --- COLUMN DEFINITIONS ---
-    // Create column grid if widths are specified
-    if (table.style?.columnWidths) {
-        const grid = tbl.ele('w:tblGrid');
-        for (const width of table.style.columnWidths) {
-            // Column width in twips (1/20 of a point)
-            grid.ele('w:gridCol', { 'w:w': width });
-        }
-    }
-
-    // --- TABLE ALIGNMENT ---
-    // Horizontal table alignment (convert 'justify' to 'both')
     if (table.style?.align) {
         const jc = table.style.align === 'justify' ? 'both' : table.style.align;
         tblPr.ele('w:jc', { 'w:val': jc });
     }
 
-    // --- ROW PROCESSING ---
+    const borders = tblPr.ele('w:tblBorders');
+    const borderSettings = {
+        'w:val': 'single',
+        'w:sz': '4',
+        'w:space': '0',
+        'w:color': 'auto'
+    };
+
+    borders.ele('w:top', borderSettings).up()
+        .ele('w:left', borderSettings).up()
+        .ele('w:bottom', borderSettings).up()
+        .ele('w:right', borderSettings).up()
+        .ele('w:insideH', borderSettings).up()
+        .ele('w:insideV', borderSettings);
+
+    if (table.style?.columnWidths) {
+        const grid = tbl.ele('w:tblGrid');
+        for (const width of table.style.columnWidths) {
+            grid.ele('w:gridCol', { 'w:w': width });
+        }
+    }
+
+    const rowspanTracker: number[] = [];
+    let totalCols = table.style?.columnWidths?.length ?? 0;
+
+    if (totalCols === 0) {
+        for (const row of table.rows) {
+            let cols = 0;
+            for (const cell of row.cells) {
+                cols += cell.colspan ?? 1;
+            }
+            totalCols = Math.max(totalCols, cols);
+        }
+    }
+
     for (const row of table.rows) {
-        const tr = tbl.ele('w:tr');  // Table row
+        const tr = tbl.ele('w:tr');
+        let colIndex = 0;
 
-        // --- CELL PROCESSING ---
         for (const cell of row.cells) {
-            const tc = tr.ele('w:tc');  // Table cell
-            const tcPr = tc.ele('w:tcPr');  // Cell properties
-
-            // --- CELL WIDTH ---
-            // Width in twips (dxa = 1/20 point)
-            if (cell.style?.width) {
-                tcPr.ele('w:tcW', {
-                    'w:w': cell.style.width,
-                    'w:type': 'dxa'
-                });
+            while (rowspanTracker[colIndex]) {
+                rowspanTracker[colIndex]--;
+                const emptyTc = tr.ele('w:tc');
+                const emptyTcPr = emptyTc.ele('w:tcPr');
+                if (table.style?.columnWidths?.[colIndex]) {
+                    emptyTcPr.ele('w:tcW', { 'w:w': table.style.columnWidths[colIndex], 'w:type': 'dxa' });
+                }
+                emptyTcPr.ele('w:vMerge');
+                emptyTc.ele('w:p');
+                colIndex++;
             }
 
-            // --- CELL BACKGROUND ---
-            // Precedence: cell style > table style
+            const tc = tr.ele('w:tc');
+            const tcPr = tc.ele('w:tcPr');
+            const colspan = cell.colspan ?? 1;
+            const rowspan = cell.rowspan ?? 1;
+
+            if (table.style?.columnWidths?.[colIndex]) {
+                let width = 0;
+                for (let i = 0; i < colspan; i++) {
+                    width += table.style.columnWidths[colIndex + i] ?? 0;
+                }
+                tcPr.ele('w:tcW', { 'w:w': width.toString(), 'w:type': 'dxa' });
+            }
+
+            if (cell.style?.width) {
+                tcPr.ele('w:tcW', { 'w:w': cell.style.width, 'w:type': 'dxa' });
+            }
+
+            if (colspan > 1) {
+                tcPr.ele('w:gridSpan', { 'w:val': colspan.toString() });
+            }
+
+            if (rowspan > 1) {
+                tcPr.ele('w:vMerge', { 'w:val': 'restart' });
+                rowspanTracker[colIndex] = rowspan - 1;
+            }
+
             const background = cell.style?.backgroundColor || table.style?.backgroundColor;
             if (background) {
                 tcPr.ele('w:shd', {
-                    'w:val': 'clear',     // No pattern
-                    'w:color': 'auto',    // Automatic foreground
-                    'w:fill': background, // Background color
+                    'w:val': 'clear',
+                    'w:color': 'auto',
+                    'w:fill': background,
                 });
             }
 
-            // --- VERTICAL ALIGNMENT ---
-            // Precedence: cell style > table style
             const verticalAlign = cell.style?.verticalAlign || table.style?.verticalAlign;
             if (verticalAlign) {
                 tcPr.ele('w:vAlign', { 'w:val': verticalAlign });
             }
 
-            // --- CELL CONTENT CONTAINER ---
-            // Each cell requires at least one paragraph
-            const p = tc.ele('w:p');  // Paragraph container
-            const pPr = p.ele('w:pPr');  // Paragraph properties
+            const p = tc.ele('w:p');
+            const pPr = p.ele('w:pPr');
 
-            // --- CELL CONTENT ALIGNMENT ---
             if (cell.style?.align) {
                 const jc = cell.style.align === 'justify' ? 'both' : cell.style.align;
                 pPr.ele('w:jc', { 'w:val': jc });
             }
 
-            // --- CELL CONTENT PROCESSING ---
             for (const content of cell.content) {
-                // Handle plain text or text elements
                 if (typeof content === 'string' || content.type === 'text') {
                     createText(p, content, cell.style);
-                }
-
-                // Handle hyperlinks
-                else if (content.type === 'link') {
+                } else if (content.type === 'link') {
                     const relId = getHyperlinkRelId(content.url);
                     createlink(p, content, relId);
-                }
-
-                // Handle fields
-                else if (content.type === 'field') {
+                } else if (content.type === 'field') {
                     createField(p, content, cell.style);
+                } else if (content.type === 'image') {
+                    createImage(p, content, registerImage, getImageRelId);
                 }
+            }
 
+            colIndex += colspan;
+        }
 
-                // Handle images
-                else if (content.type === 'image') {
-                    createImage(
-                        p,
-                        content,
-                        registerImage,
-                        getImageRelId
-                    );
+        for (let i = colIndex; i < rowspanTracker.length; i++) {
+            if (rowspanTracker[i]) {
+                rowspanTracker[i]--;
+                const emptyTc = tr.ele('w:tc');
+                const emptyTcPr = emptyTc.ele('w:tcPr');
+                if (table.style?.columnWidths?.[i]) {
+                    emptyTcPr.ele('w:tcW', { 'w:w': table.style.columnWidths[i], 'w:type': 'dxa' });
                 }
+                emptyTcPr.ele('w:vMerge');
+                emptyTc.ele('w:p');
             }
         }
     }

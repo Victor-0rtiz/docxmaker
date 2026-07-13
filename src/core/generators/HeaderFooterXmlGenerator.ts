@@ -1,5 +1,5 @@
 import { create } from 'xmlbuilder2';
-import type { HeaderFooterDefinition } from '../types/types.js';
+import type { HeaderFooterDefinition, StyleText, DocumentElement, ParagraphElement, TableElement, ListElement, TextElement, LinkElement, ImageElement, FieldElement } from '../types/types.js';
 import { ImageManager } from './ImageManager.js';
 import { RelationshipsManager } from './RelationshipsGenerator.js';
 import { NumberingManager } from './NumberingManager.js';
@@ -8,19 +8,26 @@ import { createTable } from '../elements/table.js';
 import { createImage } from '../elements/image.js';
 import { createParagraph } from '../elements/paragrahp.js';
 import { createList } from '../elements/list.js';
+import { createlink } from '../elements/link.js';
+import { createField } from '../elements/field.js';
 
-function processContent(
-  root: any,
-  content: HeaderFooterDefinition['content'],
-  relManager: RelationshipsManager,
-  imageManager: ImageManager,
-  numberingManager: NumberingManager
-) {
-  for (const item of content || []) {
+function isBlockElement(item: DocumentElement): item is ParagraphElement | TableElement | ListElement {
+  if (typeof item === 'string') return false;
+  return item.type === 'paragraph' || item.type === 'table' || item.type === 'list';
+}
+
+function isInlineElement(item: DocumentElement): item is string | TextElement | LinkElement | ImageElement | FieldElement {
+  if (typeof item === 'string') return true;
+  return item.type === 'text' || item.type === 'link' || item.type === 'field' || item.type === 'image';
+}
+
+function renderInlineItems(root: any, items: (string | TextElement | LinkElement | ImageElement | FieldElement)[], relManager: RelationshipsManager, imageManager: ImageManager, getStyle?: (id: string) => StyleText | undefined) {
+  if (items.length === 0) return;
+  const p = root.ele('w:p');
+  for (const item of items) {
     if (typeof item === 'string') {
-      const p = root.ele('w:p'); createText(p, item);
+      createText(p, item);
     } else if (item.type === 'text') {
-      const p = root.ele('w:p');
       if (item.style) {
         const pPr = p.ele('w:pPr');
         if (item.style.align) {
@@ -33,35 +40,13 @@ function processContent(
         }
       }
       createText(p, item);
-    } else if (item.type === 'paragraph') {
-      createParagraph(
-        root, item,
-        url => relManager.addHyperlink(url),
-        (data, ext) => imageManager.registerImage(data, ext),
-        filename => relManager.addImage(filename)
-      );
-    } else if (item.type === 'table') {
-      createTable(
-        root, item,
-        url => relManager.addHyperlink(url),
-        (data, ext) => imageManager.registerImage(data, ext),
-        filename => relManager.addImage(filename)
-      );
+    } else if (item.type === 'link') {
+      const relId = relManager.addHyperlink(item.url);
+      createlink(p, item, relId);
+    } else if (item.type === 'field') {
+      createField(p, item);
     } else if (item.type === 'image') {
-      createImage(
-        root, item,
-        (data, ext) => imageManager.registerImage(data, ext),
-        filename => relManager.addImage(filename)
-      );
-    } else if (item.type === 'list') {
-      const indentTwips = item.style?.indentTwips ?? 720;
-      const hangingTwips = item.style?.hangingTwips ?? 360;
-      const numId = numberingManager.addList(item.variant ?? 'unordered', indentTwips, hangingTwips);
-      createList(
-        root,
-        item,
-        numId,
-        url => relManager.addHyperlink(url),
+      createImage(p, item,
         (data, ext) => imageManager.registerImage(data, ext),
         filename => relManager.addImage(filename)
       );
@@ -69,11 +54,65 @@ function processContent(
   }
 }
 
+function processContent(
+  root: any,
+  content: HeaderFooterDefinition['content'],
+  relManager: RelationshipsManager,
+  imageManager: ImageManager,
+  numberingManager: NumberingManager,
+  getStyle?: (id: string) => StyleText | undefined
+) {
+  let inlineBuffer: (string | TextElement | LinkElement | ImageElement | FieldElement)[] = [];
+
+  const flushInlines = () => {
+    renderInlineItems(root, inlineBuffer, relManager, imageManager, getStyle);
+    inlineBuffer = [];
+  };
+
+  for (const item of content || []) {
+    if (isBlockElement(item)) {
+      flushInlines();
+
+      if (item.type === 'paragraph') {
+        createParagraph(
+          root, item,
+          url => relManager.addHyperlink(url),
+          (data, ext) => imageManager.registerImage(data, ext),
+          filename => relManager.addImage(filename),
+          getStyle
+        );
+      } else if (item.type === 'table') {
+        createTable(
+          root, item,
+          url => relManager.addHyperlink(url),
+          (data, ext) => imageManager.registerImage(data, ext),
+          filename => relManager.addImage(filename)
+        );
+      } else if (item.type === 'list') {
+        const indentTwips = item.style?.indentTwips ?? 720;
+        const hangingTwips = item.style?.hangingTwips ?? 360;
+        const numId = numberingManager.addList(item.variant ?? 'unordered', indentTwips, hangingTwips);
+        createList(
+          root, item, numId,
+          url => relManager.addHyperlink(url),
+          (data, ext) => imageManager.registerImage(data, ext),
+          filename => relManager.addImage(filename)
+        );
+      }
+    } else if (isInlineElement(item)) {
+      inlineBuffer.push(item);
+    }
+  }
+
+  flushInlines();
+}
+
 export function generateHeaderXml(
   def: HeaderFooterDefinition,
   relManager: RelationshipsManager,
   imageManager: ImageManager,
-  numberingManager: NumberingManager
+  numberingManager: NumberingManager,
+  getStyle?: (id: string) => StyleText | undefined
 ): string {
   const root = create({ version: '1.0', encoding: 'UTF-8' })
     .ele('w:hdr', {
@@ -84,7 +123,7 @@ export function generateHeaderXml(
       'xmlns:pic': 'http://schemas.openxmlformats.org/drawingml/2006/picture'
     });
 
-  processContent(root, def.content, relManager, imageManager, numberingManager);
+  processContent(root, def.content, relManager, imageManager, numberingManager, getStyle);
 
   return root.end({ prettyPrint: true });
 }
@@ -93,7 +132,8 @@ export function generateFooterXml(
   def: HeaderFooterDefinition,
   relManager: RelationshipsManager,
   imageManager: ImageManager,
-  numberingManager: NumberingManager
+  numberingManager: NumberingManager,
+  getStyle?: (id: string) => StyleText | undefined
 ): string {
   const root = create({ version: '1.0', encoding: 'UTF-8' })
     .ele('w:ftr', {
@@ -104,7 +144,7 @@ export function generateFooterXml(
       'xmlns:pic': 'http://schemas.openxmlformats.org/drawingml/2006/picture'
     });
 
-  processContent(root, def.content, relManager, imageManager, numberingManager);
+  processContent(root, def.content, relManager, imageManager, numberingManager, getStyle);
 
   return root.end({ prettyPrint: true });
 }

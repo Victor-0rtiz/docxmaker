@@ -99,6 +99,20 @@ export class RelationshipsManager {
     }
 
     /**
+     * Adds a styles relationship
+     * @returns {string} Relationship ID
+     */
+    addStyles(): string {
+        const relId = this.getNextRelId();
+        this.relationships.push({
+            id: relId,
+            type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles',
+            target: 'styles.xml'
+        });
+        return relId;
+    }
+
+    /**
      * Generates the next sequential relationship ID
      * @private
      * @returns {string} Next relationship ID in format "rId{N}"

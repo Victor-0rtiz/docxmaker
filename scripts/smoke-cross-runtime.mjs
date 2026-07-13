@@ -16,9 +16,20 @@ function assertDocxSignature(bytes) {
 
 async function run() {
   const definition = {
+    styles: [
+      { id: 'Heading1', style: { bold: true, fontSize: 24, color: '333333' } },
+      { id: 'BodyText', style: { fontSize: 11 } }
+    ],
+    page: {
+      size: 'A4',
+      orientation: 'portrait',
+      margins: { top: 1440, right: 1440, bottom: 1440, left: 1440 }
+    },
     header: { content: ["docxmaker"] },
     footer: { content: [{ type: "field", field: "PAGE" }, " / ", { type: "field", field: "NUMPAGES" }] },
     content: [
+      { type: 'paragraph', style: 'Heading1', content: ['Document Title'] },
+      { type: 'paragraph', style: 'BodyText', content: ['This is body text.'] },
       "Smoke test document",
       {
         type: "paragraph",
@@ -43,6 +54,31 @@ async function run() {
           ["First ordered item"],
           ["Second ordered item"],
           ["Third ", { type: "field", field: "PAGE" }]
+        ]
+      },
+      {
+        type: "table",
+        style: { columnWidths: [3000, 3000, 3000] },
+        rows: [
+          {
+            cells: [
+              { content: ["A1"], colspan: 2, style: { backgroundColor: "E0E0E0", align: "center" } },
+              { content: ["A3"], style: { backgroundColor: "E0E0E0" } }
+            ]
+          },
+          {
+            cells: [
+              { content: ["B1"], rowspan: 2 },
+              { content: ["B2"] },
+              { content: ["B3"] }
+            ]
+          },
+          {
+            cells: [
+              { content: ["C2"] },
+              { content: ["C3"] }
+            ]
+          }
         ]
       }
     ]

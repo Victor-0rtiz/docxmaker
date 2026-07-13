@@ -8,6 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.0] - 2026-07-12
+
+### Added
+- 🧩 **colspan y rowspan en tablas** — Ahora podés combinar celdas horizontal y verticalmente.
+- 📋 **Listas numeradas y con viñetas (reales)** — Usan `<w:numPr>` con `numbering.xml`, no viñetas falsas.
+- 🔢 **Campos dinámicos `PAGE` y `NUMPAGES`** — Para numeración de páginas en header/footer.
+- 🌐 **Browser build autónomo** — El archivo `docxmaker.browser.js` funciona sin CDNs, importmaps ni scripts externos. Solo 428 KB.
+- 📐 **Configuración de página** — `page.size` (A4, Letter, etc.), `page.orientation` y `page.margins` personalizables.
+- 🧪 **Suite de pruebas** — 12 escenarios en Node.js más página interactiva de prueba en navegador.
+
+### Changed
+- ⬆️ **Versión estable 1.0.0** — API madura y probada en Node.js y navegador.
+- 🧼 **xmlbuilder2 ya no es peer dependency** — El browser build lo incluye internamente.
+- 🎨 **Estilos registrados** — Podés definir estilos reutilizables con `styles: [{ id: 'MiEstilo', style: {...} }]` y aplicarlos con `style: 'MiEstilo'`.
+- 🔗 **Hipervínculos en el mismo párrafo que texto plano** — Ahora podés mezclar links con texto normal en una sola línea.
+
+### Fixed
+- 🐛 **Documentos abriéndose correctamente en Word** — Se corrigió el valor inválido `w:vAlign="middle"` (debe ser `"center"`) y el orden de los elementos `<w:sectPr>` y `<w:tblPr>` que Word exige estrictamente.
+- 🚫 **Ya no se generan etiquetas vacías** — Se eliminó la creación de `<w:rPr/>` sin contenido que Word rechazaba.
+
+---
+
 ## [0.1.0] - 2026-03-12
 
 ### Added

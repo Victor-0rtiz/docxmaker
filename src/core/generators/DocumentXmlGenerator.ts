@@ -1,19 +1,22 @@
 import { create } from 'xmlbuilder2';
-import type { DocxDefinition } from '../types/types.js';
+import type { DocxDefinition, StyleText, PageConfig } from '../types/types.js';
 import { createText } from '../elements/text.js';
 import { createTable } from '../elements/table.js';
 import { createImage } from '../elements/image.js';
 import { ImageManager } from './ImageManager.js';
 import { RelationshipsManager } from './RelationshipsGenerator.js';
 import { NumberingManager } from './NumberingManager.js';
+import { StylesManager } from './StylesManager.js';
 import { createParagraph } from '../elements/paragrahp.js';
 import { createList } from '../elements/list.js';
+import { getPageSize, DEFAULT_MARGINS } from '../../utils/page.js';
 
 export function generateDocumentXml(
   definition: DocxDefinition,
   relManager: RelationshipsManager,
   imageManager: ImageManager,
   numberingManager: NumberingManager,
+  stylesManager: StylesManager,
   opts?: { headerRelId?: string; footerRelId?: string }
 ): string {
   const root = create({ version: '1.0', encoding: 'UTF-8' })
@@ -25,6 +28,10 @@ export function generateDocumentXml(
       'xmlns:pic': 'http://schemas.openxmlformats.org/drawingml/2006/picture'
     })
     .ele('w:body');
+
+  const getStyle = (id: string): StyleText | undefined => {
+    return stylesManager.getStyle(id)?.style;
+  };
 
   for (const item of definition.content) {
     if (typeof item === 'string') {
@@ -50,7 +57,8 @@ export function generateDocumentXml(
         item,
         (url) => relManager.addHyperlink(url),
         (data, ext) => imageManager.registerImage(data, ext),
-        (filename) => relManager.addImage(filename)
+        (filename) => relManager.addImage(filename),
+        getStyle
       );
     } else if (item.type === 'table') {
       createTable(
@@ -89,6 +97,25 @@ export function generateDocumentXml(
   }
   if (opts?.footerRelId) {
     sectPr.ele('w:footerReference', { 'w:type': 'default', 'r:id': opts.footerRelId });
+  }
+
+  const page = definition.page;
+  if (page) {
+    if (page.size) {
+      const { width, height } = getPageSize(page.size, page.orientation);
+      sectPr.ele('w:pgSz', { 'w:w': width.toString(), 'w:h': height.toString() });
+    } else if (page.orientation) {
+      const { width, height } = getPageSize('A4', page.orientation);
+      sectPr.ele('w:pgSz', { 'w:w': width.toString(), 'w:h': height.toString() });
+    }
+
+    const margins = { ...DEFAULT_MARGINS, ...page.margins };
+    sectPr.ele('w:pgMar', {
+      'w:top': margins.top.toString(),
+      'w:right': margins.right.toString(),
+      'w:bottom': margins.bottom.toString(),
+      'w:left': margins.left.toString(),
+    });
   }
 
   return root.end({ prettyPrint: true });
