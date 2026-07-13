@@ -11,6 +11,22 @@ import { createParagraph } from '../elements/paragrahp.js';
 import { createList } from '../elements/list.js';
 import { getPageSize, DEFAULT_MARGINS } from '../../utils/page.js';
 
+/**
+ * Generates the main `word/document.xml` content for a DOCX package.
+ *
+ * Iterates over the content array and delegates to the appropriate
+ * element builder (text, paragraph, table, image, list). Appends
+ * section properties (`<w:sectPr>`) at the end with header/footer
+ * references, page size, orientation, and margins.
+ *
+ * @param definition - Full document definition
+ * @param relManager - Relationships manager for registering hyperlinks/images
+ * @param imageManager - Image manager for registering image blobs
+ * @param numberingManager - Numbering manager for list definitions
+ * @param stylesManager - Styles manager for registered styles
+ * @param opts - Optional header/footer relationship Ids
+ * @returns Serialized XML string
+ */
 export function generateDocumentXml(
   definition: DocxDefinition,
   relManager: RelationshipsManager,

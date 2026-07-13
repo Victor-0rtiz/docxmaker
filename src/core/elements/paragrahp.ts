@@ -4,6 +4,21 @@ import { createlink } from "./link.js";
 import { createText } from "./text.js";
 import { createField } from "./field.js";
 
+/**
+ * Creates a WordprocessingML paragraph (`<w:p>`) with optional styling.
+ *
+ * Supports:
+ * - Registered styles via `style: 'Heading1'` (looked up through `getStyle`)
+ * - Inline styles: color, bold, italic, underline, fontSize, align, lineSpacing
+ * - Mixed content: text, hyperlinks, fields, and images
+ *
+ * @param parent - Parent XML element (from xmlbuilder2)
+ * @param paragraph - Paragraph element definition
+ * @param getHyperlinkRelId - Callback to register hyperlinks
+ * @param registerImage - Callback to register images
+ * @param getImageRelId - Callback to get image relationship Id
+ * @param getStyle - Callback to resolve registered style by id
+ */
 export function createParagraph(
   parent: any,
   paragraph: ParagraphElement,

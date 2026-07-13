@@ -1,3 +1,11 @@
+/**
+ * Minimal EventEmitter polyfill for browser environments.
+ *
+ * xmlbuilder2 depends on Node's built-in `events` module for its
+ * callback-based builder (XMLBuilderCBImpl extends EventEmitter).
+ * This polyfill provides just enough surface area to satisfy that
+ * dependency at runtime in browsers.
+ */
 export class EventEmitter {
   private handlers = new Map<string, Array<(...args: unknown[]) => void>>();
 

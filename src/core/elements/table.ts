@@ -4,6 +4,24 @@ import { createlink } from "./link.js";
 import { createImage } from "./image.js";
 import { createField } from "./field.js";
 
+/**
+ * Creates a WordprocessingML table (`<w:tbl>`) with cells, rows, colspan, and rowspan.
+ *
+ * Handles:
+ * - Table alignment (`w:jc`)
+ * - Default borders for all cells
+ * - Column widths via `w:tblGrid` and `w:gridCol`
+ * - Cell merging with `w:gridSpan` (colspan) and `w:vMerge` (rowspan)
+ * - Background colors via `w:shd`
+ * - Vertical alignment via `w:vAlign`
+ * - Cell content: text, links, fields, and images
+ *
+ * @param parent - Parent XML element (from xmlbuilder2)
+ * @param table - Table element definition
+ * @param getHyperlinkRelId - Callback to register hyperlinks
+ * @param registerImage - Callback to register images
+ * @param getImageRelId - Callback to get image relationship Id
+ */
 export function createTable(
     parent: any,
     table: TableElement,
